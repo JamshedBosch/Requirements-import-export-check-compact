@@ -7,6 +7,7 @@ import html
 from quick_start_guide import show_quick_start_guide
 from logger_config import logger
 import json
+from version import __version__, __company__, __product_name__  # Import version info
 
 # Remove the stdout/stderr redirection
 # sys.stdout = open(log_path, 'w')
@@ -259,8 +260,9 @@ class ImportExportGui:
 
     def show_about_dialog(self):
         about_text = (
-            "Import Export Checker\n\n"
-            "Version: 3.0\n"
+            f"{__product_name__}\n\n"
+            f"Version: {__version__}\n"
+            f"© {__company__}\n\n"
             "This tool allows users to perform Import and Export checks for ReqIF files.\n\n"
             "Features:\n"
             "- Convert ReqIF files to Excel format\n"
