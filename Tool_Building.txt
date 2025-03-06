@@ -1,0 +1,4 @@
+1. Change the verion number in the `ImportExportChecksGUI` file in the function show_about_dialog to the current version number.
+
+2. Run the following command to create the executable:
+    pyinstaller ImportExportChecksGUI.spec

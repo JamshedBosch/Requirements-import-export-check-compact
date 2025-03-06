@@ -1,0 +1,15 @@
+.idea
+venv
+report
+dist
+build
+__pycache__
+extract
+excel
+output.log
+settings.json
+pre_import_hook.py
+recent_files.json
+recent_folders.json
+recent_paths.json
+
