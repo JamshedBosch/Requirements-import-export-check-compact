@@ -1,0 +1,24 @@
+# Core dependencies
+pyreqif>=0.1.0
+pandas>=2.0.0
+colorclass>=2.2.2
+oletools>=0.60.1
+
+# GUI dependencies
+PyQt6>=6.8.1
+PyQt6-Qt6>=6.8.2
+PyQt6-sip>=13.10.0
+
+# Excel handling
+openpyxl>=3.1.0
+xlrd>=2.0.1
+
+# Build dependencies
+pyinstaller>=6.7.0
+
+# Utility packages
+pillow>=10.0.0  # For image handling in GUI
+
+# Optional dependencies for development
+black>=23.0.0  # Code formatting
+flake8>=6.0.0  # Code linting 
