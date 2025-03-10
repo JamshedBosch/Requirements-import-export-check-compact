@@ -62,21 +62,26 @@ class ProjectCheckerPPE:
             return findings
 
         for index, row in df.iterrows():
+            # Handle empty BRS status
+            brs_status = row['BRS-1Box_Status_Hersteller_Bosch_PPx']
+            if pd.isna(brs_status) or brs_status == "":
+                brs_status = "Empty"
+            else:
+                brs_status = str(brs_status).rstrip(',')
+
             if (row['CR-Status_Bosch_PPx'] == "---" and
                     not pd.isna(row['CR-ID_Bosch_PPx']) and
-                    row[
-                        'BRS-1Box_Status_Hersteller_Bosch_PPx'] != "verworfen"):
+                    brs_status != "verworfen"):
                 findings.append({
                     'Row': index + 2,
-                    # Adjust for Excel row (index + 2 to account for header row)
                     'Attribute': 'CR-Status_Bosch_PPx, CR-ID_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
                     'Issue': (
-                        "'CR-Status_Bosch_PPx' is '---' while 'CR-ID_Bosch_PPx' is not empty "
+                        "'CR-Status_Bosch_PPx' is '---' where as 'CR-ID_Bosch_PPx' is not empty "
                         "and 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'verworfen'"),
                     'Value': (
                         f"CR-Status_Bosch_PPx: {row['CR-Status_Bosch_PPx']}, "
                         f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}, "
-                        f"BRS-1Box_Status_Hersteller_Bosch_PPx: {row['BRS-1Box_Status_Hersteller_Bosch_PPx']}")
+                        f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
                 })
         return findings
 
@@ -85,14 +90,17 @@ class ProjectCheckerPPE:
     def check_anlaufkonfiguration_empty(df, file_path):
         """
         Checks if 'Anlaufkonfiguration_01', 'Anlaufkonfiguration_02', 'Anlaufkonfiguration_03'
-        are empty where 'Object ID' is not empty.
+        are empty where:
+        1. 'Object ID' is not empty AND
+        2. 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'verworfen'
         Returns findings as a list of dictionaries.
         """
         findings = []
         # Check for required columns
         required_columns = ['Object ID', 'Anlaufkonfiguration_01',
                             'Anlaufkonfiguration_02',
-                            'Anlaufkonfiguration_03']
+                            'Anlaufkonfiguration_03',
+                            'BRS-1Box_Status_Hersteller_Bosch_PPx']
         missing_columns = [col for col in required_columns if
                            col not in df.columns]
         if missing_columns:
@@ -104,19 +112,33 @@ class ProjectCheckerPPE:
 
         # Iterate through rows and check conditions
         for index, row in df.iterrows():
-            if not pd.isna(
-                    row['Object ID']):  # Check if 'Object ID' is not empty
-                empty_columns = [col for col in required_columns[1:] if
-                                 pd.isna(row[col])]
+            # Handle empty BRS status
+            brs_status = row['BRS-1Box_Status_Hersteller_Bosch_PPx']
+            if pd.isna(brs_status) or brs_status == "":
+                brs_status = "Empty"
+            else:
+                brs_status = str(brs_status).rstrip(',')
+
+            # Check if 'Object ID' is not empty AND status is not 'verworfen'
+            if (not pd.isna(row['Object ID']) and 
+                brs_status != "verworfen"):
+                
+                # Check Anlaufkonfiguration columns
+                empty_columns = [col for col in required_columns[1:4] if
+                                pd.isna(row[col])]
                 if empty_columns:
                     findings.append({
                         'Row': index + 2,
-                        # Adjust for Excel row (index + 2 to account for header row)
                         'Attribute': ', '.join(empty_columns),
                         'Issue': (
-                            f"{', '.join(empty_columns)} is empty while 'Object ID' is not empty."),
-                        'Value': (f"Object ID: {row['Object ID']}, "
-                                  f"Empty Columns: {', '.join(empty_columns)}")
+                            f"{', '.join(empty_columns)} is empty where as 'Object ID' is not empty "
+                            f"and BRS-1Box_Status_Hersteller_Bosch_PPx is not 'verworfen'."
+                        ),
+                        'Value': (
+                            f"Object ID: {row['Object ID']}\n"
+                            f"Empty Columns: {', '.join(empty_columns)}\n"
+                            f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}"
+                        )
                     })
         return findings
 
@@ -143,16 +165,21 @@ class ProjectCheckerPPE:
 
         # Iterate through rows and check conditions
         for index, row in df.iterrows():
-            if pd.isna(row[
-                           'CR-ID_Bosch_PPx']):  # Check if 'CR-ID_Bosch_PPx' is empty
+            # Handle empty BRS status
+            brs_status = row['BRS-1Box_Status_Hersteller_Bosch_PPx']
+            if pd.isna(brs_status) or brs_status == "":
+                brs_status = "Empty"
+            else:
+                brs_status = str(brs_status).rstrip(',')
+
+            if pd.isna(row['CR-ID_Bosch_PPx']):  # Check if 'CR-ID_Bosch_PPx' is empty
                 findings.append({
                     'Row': index + 2,
-                    # Adjust for Excel row (index + 2 to account for header row)
                     'Attribute': 'CR-ID_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
                     'Issue': ("'CR-ID_Bosch_PPx' is empty while "
                               "'BRS-1Box_Status_Hersteller_Bosch_PPx' has a value."),
                     'Value': (f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}, "
-                              f"BRS-1Box_Status_Hersteller_Bosch_PPx: {row['BRS-1Box_Status_Hersteller_Bosch_PPx']}")
+                              f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
                 })
         return findings
 
