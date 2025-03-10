@@ -25,7 +25,7 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
   - 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'verworfen'
 - **Finding Trigger**: All conditions are true simultaneously
 
-#### 3. Anlaufkonfiguration Empty Check
+#### 4. Anlaufkonfiguration Empty Check
 **Method**: `check_anlaufkonfiguration_empty`
 - **Purpose**: Ensures Anlaufkonfiguration fields are not empty under specific conditions
 - **Checks**:
@@ -35,7 +35,7 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
   - 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'verworfen'
 - **Finding Trigger**: Empty Anlaufkonfiguration fields when conditions are met
 
-#### 4. CR ID Empty for BRS Hersteller Status
+#### 5. CR ID Empty for BRS Hersteller Status
 **Method**: `check_cr_id_empty_for_brs_hersteller_status`
 - **Purpose**: Validates CR ID presence for BRS Hersteller status
 - **Condition**: 'CR-ID_Bosch_PPx' is empty

@@ -85,7 +85,7 @@ class ProjectCheckerPPE:
                 })
         return findings
 
-    # Check Nr.3
+    # Check Nr.4
     @staticmethod
     def check_anlaufkonfiguration_empty(df, file_path):
         """
@@ -142,7 +142,7 @@ class ProjectCheckerPPE:
                     })
         return findings
 
-    # Check Nr.4
+    # Check Nr.5
     @staticmethod
     def check_cr_id_empty_for_brs_hersteller_status(df, file_path):
         """
