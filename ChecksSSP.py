@@ -137,41 +137,43 @@ class ProjectCheckerSSP:
         identifier_col = 'ReqIF.ForeignID' if 'ReqIF.ForeignID' in df.columns else 'Object ID'
         compare_identifier_col = 'ForeignID' if 'ForeignID' in compare_df.columns else 'Object ID'
 
-        # Define attribute pairs to compare (customer file attribute, Bosch file attribute)
-        attribute_pairs = [
-            ('ReqIF.Category', 'Category'),
-            # Switched ASIL vs RB_ASIL OFF since they are empty at the moment, later will be switched ON
-            # ('ASIL', 'RB_ASIL'),
+        # Define full attribute pairs for ReqIF.Category files
+        full_attribute_pairs = [
             ('Reifegrad', 'Reifegrad'),
             ('Feature', 'Feature'),
             ('Sonstige-Varianten', 'Sonstige-Varianten')
         ]
 
+        # Determine which type of file we're dealing with and set appropriate attributes to check
+        if 'ReqIF.Category' in df.columns:
+            logger.debug("Using ReqIF.Category vs Category comparison with all attributes")
+            attribute_pairs = [('ReqIF.Category', 'Category')] + full_attribute_pairs
+        elif 'Typ' in df.columns:
+            logger.debug("Using Typ vs Typ comparison only")
+            attribute_pairs = [('Typ', 'Typ')]  # Only check Typ when it's a Typ file
+        else:
+            logger.warning("Neither 'ReqIF.Category' nor 'Typ' column found in customer file")
+            return findings  # Return empty findings if neither column exists
+
         # Validate all required columns exist in customer file
-        customer_required_cols = [identifier_col,
-                                  'Status OEM zu Lieferant R'] + [pair[0] for
-                                                                  pair in
-                                                                  attribute_pairs]
-        missing_customer_cols = [col for col in customer_required_cols if
-                                 col not in df.columns]
+        customer_required_cols = [identifier_col, 'Status OEM zu Lieferant R'] + [pair[0] for pair in attribute_pairs]
+        missing_customer_cols = [col for col in customer_required_cols if col not in df.columns]
 
         # Validate all required columns exist in Bosch file
-        bosch_required_cols = [compare_identifier_col] + [pair[1] for pair in
-                                                          attribute_pairs]
-        missing_bosch_cols = [col for col in bosch_required_cols if
-                              col not in compare_df.columns]
+        bosch_required_cols = [compare_identifier_col] + [pair[1] for pair in attribute_pairs]
+        missing_bosch_cols = [col for col in bosch_required_cols if col not in compare_df.columns]
 
         # Handle missing columns
         if missing_customer_cols:
             check_name = __class__.check_multiple_attributes_with_status_oem_zu_lieferant_r.__name__
-            print(
-                f"Warning: Missing columns in the customer DataFrame: {missing_customer_cols}, in File: {file_path}.\nSkipping check: {check_name}")
+            logger.warning(
+                f"Missing columns in the customer DataFrame: {missing_customer_cols}, in File: {file_path}.\nSkipping check: {check_name}")
             return findings
 
         if missing_bosch_cols:
             check_name = __class__.check_multiple_attributes_with_status_oem_zu_lieferant_r.__name__
-            print(
-                f"Warning: Missing columns in the Bosch file: {missing_bosch_cols}.\nSkipping check: {check_name}")
+            logger.warning(
+                f"Missing columns in the Bosch file: {missing_bosch_cols}.\nSkipping check: {check_name}")
             return findings
 
         # Create dictionary mappings for each Bosch attribute for quick lookup
