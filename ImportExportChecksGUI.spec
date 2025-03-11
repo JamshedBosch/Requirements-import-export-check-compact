@@ -2,6 +2,7 @@
 from PyInstaller.utils.win32.versioninfo import VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable, StringStruct, VarFileInfo, VarStruct
 import os
 import re
+import zipfile  # Add zipfile import
 
 # Read version from version.py
 with open('version.py', 'r') as f:
@@ -138,7 +139,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='ImportExportChecker',
+    name=f'ImportExportChecker_v{VERSION}',  # Append version number to executable name
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -153,3 +154,8 @@ exe = EXE(
     version=version_info,  # Add version information
     # icon='path/to/icon.ico',  # Uncomment and set path to add an application icon
 )
+
+# Create zip file after build
+exe_name = f'ImportExportChecker_v{VERSION}'
+with zipfile.ZipFile(f'dist/{exe_name}.zip', 'w', zipfile.ZIP_DEFLATED) as zipf:
+    zipf.write(f'dist/{exe_name}.exe', f'{exe_name}.exe')
