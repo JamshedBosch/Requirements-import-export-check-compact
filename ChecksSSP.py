@@ -215,9 +215,13 @@ class ProjectCheckerSSP:
             if pd.isna(object_id):
                 continue
 
+            # Clean up oem_status by stripping trailing comma
+            oem_status = str(row.get('Status OEM zu Lieferant R', '')).rstrip(',')
+            if pd.isna(oem_status) or oem_status == "":
+                oem_status = "Empty"
+
             # Check if the object ID exists in the Bosch file
-            if object_id in compare_dicts[attribute_pairs[0][
-                1]]:  # Check using the first attribute's dictionary
+            if object_id in compare_dicts[attribute_pairs[0][1]]:  # Check using the first attribute's dictionary
                 # Flag to track if any attribute differs
                 any_attribute_differs = False
                 # Store attribute differences for reporting
@@ -226,27 +230,19 @@ class ProjectCheckerSSP:
                 # Check each attribute pair
                 for customer_attr, bosch_attr in attribute_pairs:
                     customer_value = row.get(customer_attr, None)
-                    bosch_value = compare_dicts[bosch_attr].get(object_id,
-                                                                None)
+                    bosch_value = compare_dicts[bosch_attr].get(object_id, None)
 
                     # Skip comparison if both values are empty
-                    if (pd.isna(customer_value) or str(
-                            customer_value).strip() == "") and \
-                            (pd.isna(bosch_value) or str(
-                                bosch_value).strip() == ""):
+                    if (pd.isna(customer_value) or str(customer_value).strip() == "") and \
+                            (pd.isna(bosch_value) or str(bosch_value).strip() == ""):
                         continue
 
                     # Get original string values for display
-                    customer_value_str = str(
-                        customer_value).strip() if not pd.isna(
-                        customer_value) else ""
-                    bosch_value_str = str(bosch_value).strip() if not pd.isna(
-                        bosch_value) else ""
+                    customer_value_str = str(customer_value).strip() if not pd.isna(customer_value) else ""
+                    bosch_value_str = str(bosch_value).strip() if not pd.isna(bosch_value) else ""
 
                     # Check if values are equivalent after normalization
-                    if normalize_for_comparison(
-                            customer_value) != normalize_for_comparison(
-                            bosch_value):
+                    if normalize_for_comparison(customer_value) != normalize_for_comparison(bosch_value):
                         any_attribute_differs = True
                         diff_details.append({
                             'Attribute': customer_attr,
@@ -256,7 +252,7 @@ class ProjectCheckerSSP:
                         })
 
                 # If any attribute differs and status is not 'zu bewerten', add to findings
-                if any_attribute_differs and oem_status not in ['zu bewerten']:
+                if any_attribute_differs and oem_status != 'zu bewerten':
                     # Create differing attributes list for the 'Attribute' field
                     different_attrs = [
                         f"{d['Attribute']} vs {d['Bosch Attribute']}" for d in
@@ -273,6 +269,9 @@ class ProjectCheckerSSP:
                             f"       Bosch Attribute Value : {detail['Bosch Value']}\n\n"
                         )
 
+                    # Display status as "Empty" if it's nan or empty string
+                    display_status = "Empty" if pd.isna(row.get('Status OEM zu Lieferant R')) or str(row.get('Status OEM zu Lieferant R', '')).strip() == "" else oem_status
+
                     findings.append({
                         'Row': index + 2,  # Adjust for Excel row numbering
                         'Attribute': attribute_list,
@@ -285,7 +284,7 @@ class ProjectCheckerSSP:
                             f"---------------\n"
                             f"Attribute Comparison:\n{attribute_details.rstrip()}\n\n"
                             f"---------------\n"
-                            f"       Status OEM zu Lieferant R: {oem_status}\n\n"
+                            f"       Status OEM zu Lieferant R: {display_status}\n\n"
                             f"       Expected Status: zu bewerten"
                         )
                     })
