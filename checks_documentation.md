@@ -95,15 +95,22 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
 #### 8. Multiple Attributes with Status OEM zu Lieferant R
 **Method**: `check_multiple_attributes_with_status_oem_zu_lieferant_r`
 - **Purpose**: Compares multiple attributes between customer and Bosch files
-- **Compared Attributes**:
-  - ReqIF.Category vs Category
-  - Reifegrad vs Reifegrad
-  - Feature vs Feature
-  - Sonstige-Varianten vs Sonstige-Varianten
+- **File Type Support**:
+  1. Files with 'ReqIF.Category':
+     - Compares all attributes:
+       - ReqIF.Category vs Category
+       - Reifegrad vs Reifegrad
+       - Feature vs Feature
+       - Sonstige-Varianten vs Sonstige-Varianten
+  2. Files with 'Typ' (Q-LAH):
+     - Only compares Typ vs Typ
+     - Other attributes are ignored
 - **Special Features**:
+  - Dynamic file type detection
   - Thorough text normalization
   - Order-independent comparison
   - Detailed difference reporting
+  - Comprehensive logging of file type and missing columns
 - **Finding Trigger**: Any attribute difference without 'zu bewerten' status
 
 ## Common Features
