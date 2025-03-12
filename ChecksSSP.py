@@ -90,12 +90,12 @@ class ProjectCheckerSSP:
                 normalized_compare_text = HelperFunctions.normalize_text(
                     compare_text_str)
                 if normalized_object_text != normalized_compare_text:
-                    if oem_status not in ['zu bewerten,']:
+                    if oem_status not in ['zu bewerten,', 'verworfen,']:
                         findings.append({
                             'Row': index + 2,  # Adjust for Excel row numbering
                             'Attribute': 'ReqIF.Text, Status OEM zu Lieferant R',
                             'Issue': (
-                                f"'ReqIF.Text' differs from 'Object Text' but 'Status OEM zu Lieferant R' is not 'zu bewerten'."
+                                f"'ReqIF.Text' differs from 'Object Text' but 'Status OEM zu Lieferant R' is not 'zu bewerten."
                             ),
                             'Value': (
                                 f"{identifier_col}: {object_id}\n\n"
@@ -106,7 +106,9 @@ class ProjectCheckerSSP:
                                 f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
                                 f"       Bosch File Object Text: {compare_text_str}\n"
                                 f"---------------\n"
-                                f"       Status OEM zu Lieferant R: {oem_status}"
+                                f"       Status OEM zu Lieferant R: {oem_status}\n\n"
+                                f"       Expected Status: zu bewerten"
+
                             )
                         })
 
@@ -177,16 +179,17 @@ class ProjectCheckerSSP:
 
         # Add ReqIF.Category or Typ if they exist
         if 'ReqIF.Category' in df.columns:
-            logger.debug("Using ReqIF.Category vs Category comparison")
+            logger.debug("Using ReqIF.Category vs Category comparison with all attributes")
             attribute_pairs.append(('ReqIF.Category', 'Category'))
+            # For ReqIF.Category files, add all other attributes
+            attribute_pairs.extend(full_attribute_pairs)
         elif 'Typ' in df.columns:
-            logger.debug("Using Typ vs Typ comparison")
-            attribute_pairs.append(('Typ', 'Typ'))
+            logger.debug("Using Typ vs Typ comparison only")
+            attribute_pairs.append(('Typ', 'Typ'))  # Only check Typ when it's a Typ file
         else:
             logger.warning("Neither 'ReqIF.Category' nor 'Typ' column found in customer file")
-
-        # Always add the remaining attributes for checking
-        attribute_pairs.extend(full_attribute_pairs)
+            # If neither exists, check remaining attributes
+            attribute_pairs.extend(full_attribute_pairs)
         
         if not attribute_pairs:
             logger.warning("No attributes found to check")
@@ -200,17 +203,17 @@ class ProjectCheckerSSP:
         bosch_required_cols = [compare_identifier_col] + [pair[1] for pair in attribute_pairs]
         missing_bosch_cols = [col for col in bosch_required_cols if col not in compare_df.columns]
 
-        # Handle missing columns
+        # Handle missing required columns
         if missing_customer_cols:
             check_name = __class__.check_multiple_attributes_with_status_oem_zu_lieferant_r.__name__
             logger.warning(
-                f"Missing columns in the customer DataFrame: {missing_customer_cols}, in File: {file_path}.\nSkipping check: {check_name}")
+                f"Missing required columns in the customer DataFrame: {missing_customer_cols}, in File: {file_path}.\nSkipping check: {check_name}")
             return findings
 
         if missing_bosch_cols:
             check_name = __class__.check_multiple_attributes_with_status_oem_zu_lieferant_r.__name__
             logger.warning(
-                f"Missing columns in the Bosch file: {missing_bosch_cols}.\nSkipping check: {check_name}")
+                f"Missing required columns in the Bosch file: {missing_bosch_cols}.\nSkipping check: {check_name}")
             return findings
 
         # Remove ASIL from attribute pairs if either ASIL or RB_ASIL is missing
@@ -308,7 +311,7 @@ class ProjectCheckerSSP:
                         })
 
                 # If any attribute differs and status is not 'zu bewerten', add to findings
-                if any_attribute_differs and oem_status != 'zu bewerten':
+                if any_attribute_differs and oem_status not in ['zu bewerten', 'verworfen']:
                     # Create differing attributes list for the 'Attribute' field
                     different_attrs = [
                         f"{d['Attribute']} vs {d['Bosch Attribute']}" for d in

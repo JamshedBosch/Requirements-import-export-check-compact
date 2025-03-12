@@ -87,10 +87,12 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
 - **Features**:
   - Supports both 'ReqIF.ForeignID' and 'Object ID' as identifiers
   - Compares 'ReqIF.Text' with 'Object Text'
-- **Conditions**:
-  - Texts differ between files
-  - 'Status OEM zu Lieferant R' is not 'zu bewerten'
-- **Finding Trigger**: Text differences without appropriate status
+- **Status Handling**:
+  - No findings generated if Status OEM zu Lieferant R is:
+    * 'zu bewerten' OR
+    * 'verworfen'
+  - Findings generated for all other status values when texts differ
+- **Finding Trigger**: Text differences with status not being 'zu bewerten' or 'verworfen'
 
 #### 8. Multiple Attributes with Status OEM zu Lieferant R
 **Method**: `check_multiple_attributes_with_status_oem_zu_lieferant_r`
@@ -111,6 +113,11 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
     * Customer ASIL is not a special value AND
     * Values differ between customer and Bosch files
   - ASIL check is optional and skipped if columns missing
+- **Status Handling**:
+  - No findings generated if Status OEM zu Lieferant R is:
+    * 'zu bewerten' OR
+    * 'verworfen'
+  - Findings generated for all other status values when attributes differ
 - **Special Features**:
   - Independent attribute checking (each attribute checked if present)
   - Dynamic file type detection
@@ -118,7 +125,7 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
   - Order-independent comparison
   - Detailed difference reporting
   - Comprehensive logging of missing columns
-- **Finding Trigger**: Any attribute difference without 'zu bewerten' status
+- **Finding Trigger**: Any attribute difference with status not being 'zu bewerten' or 'verworfen'
 
 ## Common Features
 
