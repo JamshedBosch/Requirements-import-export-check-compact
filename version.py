@@ -1,5 +1,5 @@
 """Version information for the Requirements Import Export Checker."""
 
-__version__ = '4.0.2'
+__version__ = '4.0.3'
 __company__ = 'Robert Bosch GmbH'
 __product_name__ = 'Requirements Import Export Checker' 
