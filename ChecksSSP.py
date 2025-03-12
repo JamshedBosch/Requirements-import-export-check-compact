@@ -144,16 +144,53 @@ class ProjectCheckerSSP:
             ('Sonstige-Varianten', 'Sonstige-Varianten')
         ]
 
-        # Determine which type of file we're dealing with and set appropriate attributes to check
+        # Helper function for ASIL comparison
+        def compare_asil_values(customer_asil, bosch_asil):
+            # Strip trailing commas and whitespace
+            customer_asil = str(customer_asil).rstrip(',').strip() if not pd.isna(customer_asil) else ""
+            bosch_asil = str(bosch_asil).rstrip(',').strip() if not pd.isna(bosch_asil) else ""
+            
+            # Check if customer ASIL is in the special case values
+            is_customer_special = customer_asil.lower() in ['n/a', 'qm', 'nein', '']
+            # Check if Bosch ASIL is in the allowed values for special case
+            is_bosch_allowed = bosch_asil.lower() in ['tbd', 'n/a', 'qm', '']
+            
+            # No finding needed if customer is special case and Bosch is allowed value
+            if is_customer_special and is_bosch_allowed:
+                return False
+                
+            # Finding needed if customer is not special case and values differ
+            return not is_customer_special and customer_asil.lower() != bosch_asil.lower()
+
+        # Initialize attribute pairs with ASIL check if columns exist
+        attribute_pairs = []
+        
+        # Add ASIL check if columns exist
+        if 'ASIL' in df.columns and 'RB_ASIL' in compare_df.columns:
+            attribute_pairs.append(('ASIL', 'RB_ASIL'))
+            logger.debug("ASIL check enabled - found both ASIL and RB_ASIL columns")
+        else:
+            if 'ASIL' not in df.columns:
+                logger.warning("ASIL column not found in customer file")
+            if 'RB_ASIL' not in compare_df.columns:
+                logger.warning("RB_ASIL column not found in Bosch file")
+
+        # Add ReqIF.Category or Typ if they exist
         if 'ReqIF.Category' in df.columns:
-            logger.debug("Using ReqIF.Category vs Category comparison with all attributes")
-            attribute_pairs = [('ReqIF.Category', 'Category')] + full_attribute_pairs
+            logger.debug("Using ReqIF.Category vs Category comparison")
+            attribute_pairs.append(('ReqIF.Category', 'Category'))
         elif 'Typ' in df.columns:
-            logger.debug("Using Typ vs Typ comparison only")
-            attribute_pairs = [('Typ', 'Typ')]  # Only check Typ when it's a Typ file
+            logger.debug("Using Typ vs Typ comparison")
+            attribute_pairs.append(('Typ', 'Typ'))
         else:
             logger.warning("Neither 'ReqIF.Category' nor 'Typ' column found in customer file")
-            return findings  # Return empty findings if neither column exists
+
+        # Always add the remaining attributes for checking
+        attribute_pairs.extend(full_attribute_pairs)
+        
+        if not attribute_pairs:
+            logger.warning("No attributes found to check")
+            return findings  # Return empty findings only if there are truly no attributes to check
 
         # Validate all required columns exist in customer file
         customer_required_cols = [identifier_col, 'Status OEM zu Lieferant R'] + [pair[0] for pair in attribute_pairs]
@@ -175,6 +212,11 @@ class ProjectCheckerSSP:
             logger.warning(
                 f"Missing columns in the Bosch file: {missing_bosch_cols}.\nSkipping check: {check_name}")
             return findings
+
+        # Remove ASIL from attribute pairs if either ASIL or RB_ASIL is missing
+        if 'ASIL' in missing_customer_cols or 'RB_ASIL' in missing_bosch_cols:
+            attribute_pairs = [pair for pair in attribute_pairs if pair != ('ASIL', 'RB_ASIL')]
+            logger.warning("ASIL comparison disabled due to missing ASIL columns")
 
         # Create dictionary mappings for each Bosch attribute for quick lookup
         compare_dicts = {}
@@ -233,6 +275,18 @@ class ProjectCheckerSSP:
                 for customer_attr, bosch_attr in attribute_pairs:
                     customer_value = row.get(customer_attr, None)
                     bosch_value = compare_dicts[bosch_attr].get(object_id, None)
+
+                    # Special handling for ASIL comparison
+                    if customer_attr == 'ASIL' and bosch_attr == 'RB_ASIL':
+                        if compare_asil_values(customer_value, bosch_value):
+                            any_attribute_differs = True
+                            diff_details.append({
+                                'Attribute': customer_attr,
+                                'Customer Value': str(customer_value).rstrip(',').strip() if not pd.isna(customer_value) else "",
+                                'Bosch Attribute': bosch_attr,
+                                'Bosch Value': str(bosch_value).rstrip(',').strip() if not pd.isna(bosch_value) else ""
+                            })
+                        continue
 
                     # Skip comparison if both values are empty
                     if (pd.isna(customer_value) or str(customer_value).strip() == "") and \

@@ -95,22 +95,29 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
 #### 8. Multiple Attributes with Status OEM zu Lieferant R
 **Method**: `check_multiple_attributes_with_status_oem_zu_lieferant_r`
 - **Purpose**: Compares multiple attributes between customer and Bosch files
-- **File Type Support**:
-  1. Files with 'ReqIF.Category':
-     - Compares all attributes:
-       - ReqIF.Category vs Category
-       - Reifegrad vs Reifegrad
-       - Feature vs Feature
-       - Sonstige-Varianten vs Sonstige-Varianten
-  2. Files with 'Typ' (Q-LAH):
-     - Only compares Typ vs Typ
-     - Other attributes are ignored
+- **Compared Attributes**:
+  - ASIL vs RB_ASIL (if columns exist)
+  - ReqIF.Category vs Category (if ReqIF.Category exists)
+  - Typ vs Typ (if Typ exists)
+  - Reifegrad vs Reifegrad
+  - Feature vs Feature
+  - Sonstige-Varianten vs Sonstige-Varianten
+- **ASIL Comparison Rules**:
+  - Special handling for customer ASIL values:
+    * If customer ASIL is 'n/a', 'qm', 'nein', or empty AND
+    * Bosch RB_ASIL is 'tbd', 'n/a', 'qm', or empty
+    * Then no finding is generated
+  - Finding is generated if:
+    * Customer ASIL is not a special value AND
+    * Values differ between customer and Bosch files
+  - ASIL check is optional and skipped if columns missing
 - **Special Features**:
+  - Independent attribute checking (each attribute checked if present)
   - Dynamic file type detection
   - Thorough text normalization
   - Order-independent comparison
   - Detailed difference reporting
-  - Comprehensive logging of file type and missing columns
+  - Comprehensive logging of missing columns
 - **Finding Trigger**: Any attribute difference without 'zu bewerten' status
 
 ## Common Features
