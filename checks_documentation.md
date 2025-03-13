@@ -97,35 +97,25 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
 #### 8. Multiple Attributes with Status OEM zu Lieferant R
 **Method**: `check_multiple_attributes_with_status_oem_zu_lieferant_r`
 - **Purpose**: Compares multiple attributes between customer and Bosch files
-- **Compared Attributes**:
-  - ASIL vs RB_ASIL (if columns exist)
-  - ReqIF.Category vs Category (if ReqIF.Category exists)
-  - Typ vs Typ (if Typ exists)
-  - Reifegrad vs Reifegrad
-  - Feature vs Feature
-  - Sonstige-Varianten vs Sonstige-Varianten
-- **ASIL Comparison Rules**:
-  - Special handling for customer ASIL values:
-    * If customer ASIL is 'n/a', 'qm', 'nein', or empty AND
-    * Bosch RB_ASIL is 'tbd', 'n/a', 'qm', or empty
-    * Then no finding is generated
-  - Finding is generated if:
-    * Customer ASIL is not a special value AND
-    * Values differ between customer and Bosch files
-  - ASIL check is optional and skipped if columns missing
+- **Attributes Checked**:
+  - 'ReqIF.Category' vs 'Category'
+  - 'ASIL' vs 'ASIL'
+  - 'Reifegrad' vs 'Reifegrad'
+  - 'Feature' vs 'Feature'
+  - 'Sonstige-Varianten' vs 'Sonstige-Varianten'
+- **ASIL Special Cases**:
+  - Customer special values: ['n/a', 'qm', 'nein', 'tbd', ''] (empty)
+  - Bosch allowed values: ['tbd', 'n/a', 'qm', ''] (empty)
+  - No findings generated when customer has special value and Bosch has allowed value
+- **File Type Handling**:
+  - For ReqIF.Category files: All attributes are checked
+  - For Typ files: Only Typ and ASIL (if present) are checked
 - **Status Handling**:
   - No findings generated if Status OEM zu Lieferant R is:
     * 'zu bewerten' OR
     * 'verworfen'
   - Findings generated for all other status values when attributes differ
-- **Special Features**:
-  - Independent attribute checking (each attribute checked if present)
-  - Dynamic file type detection
-  - Thorough text normalization
-  - Order-independent comparison
-  - Detailed difference reporting
-  - Comprehensive logging of missing columns
-- **Finding Trigger**: Any attribute difference with status not being 'zu bewerten' or 'verworfen'
+- **Finding Trigger**: Attribute differences with status not being 'zu bewerten' or 'verworfen'
 
 ## Common Features
 
