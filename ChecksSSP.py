@@ -153,7 +153,7 @@ class ProjectCheckerSSP:
             bosch_asil = str(bosch_asil).rstrip(',').strip() if not pd.isna(bosch_asil) else ""
             
             # Check if customer ASIL is in the special case values
-            is_customer_special = customer_asil.lower() in ['n/a', 'qm', 'nein', '']
+            is_customer_special = customer_asil.lower() in ['n/a', 'qm', 'nein', 'tbd', '']
             # Check if Bosch ASIL is in the allowed values for special case
             is_bosch_allowed = bosch_asil.lower() in ['tbd', 'n/a', 'qm', '']
             
@@ -168,14 +168,14 @@ class ProjectCheckerSSP:
         attribute_pairs = []
         
         # Add ASIL check if columns exist
-        if 'ASIL' in df.columns and 'RB_ASIL' in compare_df.columns:
-            attribute_pairs.append(('ASIL', 'RB_ASIL'))
-            logger.debug("ASIL check enabled - found both ASIL and RB_ASIL columns")
+        if 'ASIL' in df.columns and 'ASIL' in compare_df.columns:
+            attribute_pairs.append(('ASIL', 'ASIL'))
+            logger.debug("ASIL check enabled - found ASIL columns in both files")
         else:
             if 'ASIL' not in df.columns:
                 logger.warning("ASIL column not found in customer file")
-            if 'RB_ASIL' not in compare_df.columns:
-                logger.warning("RB_ASIL column not found in Bosch file")
+            if 'ASIL' not in compare_df.columns:
+                logger.warning("ASIL column not found in Bosch file")
 
         # Add ReqIF.Category or Typ if they exist
         if 'ReqIF.Category' in df.columns:
@@ -216,9 +216,9 @@ class ProjectCheckerSSP:
                 f"Missing required columns in the Bosch file: {missing_bosch_cols}.\nSkipping check: {check_name}")
             return findings
 
-        # Remove ASIL from attribute pairs if either ASIL or RB_ASIL is missing
-        if 'ASIL' in missing_customer_cols or 'RB_ASIL' in missing_bosch_cols:
-            attribute_pairs = [pair for pair in attribute_pairs if pair != ('ASIL', 'RB_ASIL')]
+        # Remove ASIL from attribute pairs if either ASIL column is missing
+        if 'ASIL' in missing_customer_cols or 'ASIL' in missing_bosch_cols:
+            attribute_pairs = [pair for pair in attribute_pairs if pair != ('ASIL', 'ASIL')]
             logger.warning("ASIL comparison disabled due to missing ASIL columns")
 
         # Create dictionary mappings for each Bosch attribute for quick lookup
@@ -280,7 +280,7 @@ class ProjectCheckerSSP:
                     bosch_value = compare_dicts[bosch_attr].get(object_id, None)
 
                     # Special handling for ASIL comparison
-                    if customer_attr == 'ASIL' and bosch_attr == 'RB_ASIL':
+                    if customer_attr == 'ASIL' and bosch_attr == 'ASIL':
                         if compare_asil_values(customer_value, bosch_value):
                             any_attribute_differs = True
                             diff_details.append({
