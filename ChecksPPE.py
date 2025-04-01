@@ -346,6 +346,72 @@ class ProjectCheckerPPE:
 
         return findings
 
+    # Check Nr.8
+    @staticmethod
+    def check_required_attributes_not_empty(df, file_path):
+        """
+        Checks if required attributes are empty where BRS-1Box_Status_Hersteller_Bosch_PPx is not 'verworfen'.
+        Required attributes: Object ID, Object Text, Technikvariante, Typ
+        The check executes if at least one required attribute is present in the file.
+        Returns findings as a list of dictionaries.
+        """
+        findings = []
+        # Define all possible required columns
+        all_required_columns = ['Object ID', 'Object Text', 'Technikvariante', 'Typ']
+        brs_status_column = 'BRS-1Box_Status_Hersteller_Bosch_PPx'
+        
+        # Check which required columns are actually present in the DataFrame
+        available_columns = [col for col in all_required_columns if col in df.columns]
+        
+        # Check if BRS status column exists
+        if brs_status_column not in df.columns:
+            logger.warning(f"Missing BRS status column in file {file_path}")
+            return findings
+            
+        # Check if at least one required attribute is present
+        if not available_columns:
+            logger.warning(f"None of the required attributes {all_required_columns} found in file {file_path}")
+            return findings
+            
+        logger.info(f"Checking available columns: {available_columns}")
+
+        # Iterate through rows and check conditions
+        for index, row in df.iterrows():
+            # Handle empty BRS status
+            brs_status = row[brs_status_column]
+            if pd.isna(brs_status) or brs_status == "":
+                brs_status = "Empty"
+            else:
+                brs_status = str(brs_status).rstrip(',')
+
+            # Only check if status is not 'verworfen'
+            if brs_status != "verworfen":
+                # Check each available attribute
+                empty_columns = [col for col in available_columns if
+                               pd.isna(row[col]) or str(row[col]).strip() == ""]
+                
+                if empty_columns:
+                    # Build details section
+                    details = []
+                    # Add Object ID first if available
+                    if 'Object ID' in df.columns and not pd.isna(row['Object ID']):
+                        details.append(f"Object ID: {row['Object ID']}")
+                    details.append(f"Empty Columns: {', '.join(empty_columns)}")
+                    details.append(f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
+                    
+                    findings.append({
+                        'Row': index + 2,
+                        'Attribute': ', '.join(empty_columns),
+                        'Issue': (
+                            f"{', '.join(empty_columns)} {'is' if len(empty_columns) == 1 else 'are'} empty while "
+                            f"BRS-1Box_Status_Hersteller_Bosch_PPx is not 'verworfen'."
+                        ),
+                        'Value': "\n".join(details)
+                    })
+
+        logger.info(f"Completed required attributes check. Found {len(findings)} issues in {len(available_columns)} available columns.")
+        return findings
+
     """ Export Checks"""
 
     # Check Nr.1
@@ -416,3 +482,5 @@ class ProjectCheckerPPE:
                         'Value': f"Typ: {row['Typ'].rstrip(',')}, BRS-1Box_Status_Zulieferer_Bosch_PPx: {value}"
                     })
         return findings
+
+    

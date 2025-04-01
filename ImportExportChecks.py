@@ -107,6 +107,8 @@ class ChecksProcessor:
                         ProjectCheckerPPE.check_anlaufkonfiguration_empty(
                             df, file_path) +
                         ProjectCheckerPPE.check_cr_id_empty_for_brs_hersteller_status(
+                            df, file_path) +
+                        ProjectCheckerPPE.check_required_attributes_not_empty(
                             df, file_path)
                 )
                 if self.compare_df is not None:

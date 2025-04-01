@@ -57,6 +57,39 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
   - 'RB_AS_Status' is in ['accepted', 'no_req', 'canceled_closed']
 - **Finding Trigger**: Text differences with prohibited status values
 
+#### 8. Required Attributes Not Empty
+**Method**: `check_required_attributes_not_empty`
+- **Purpose**: Ensures critical attributes are not empty when requirement is active
+- **Required Attributes**:
+  - Object ID
+  - Object Text
+  - Technikvariante
+  - Typ
+- **Conditions**:
+  - 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'verworfen'
+  - At least one of the required attributes must be present in the file
+- **Flexible Execution**:
+  - Check runs if any of the required attributes exists
+  - Only validates attributes that are present in the file
+  - Skips check if BRS status column is missing
+- **Finding Trigger**: Any available required attribute is empty when BRS status is not 'verworfen'
+- **Report Format**:
+  ```
+  Row: [row_number]
+
+  Attribute: [empty_attribute_name]
+
+  Issue: [attribute_name] is empty while BRS-1Box_Status_Hersteller_Bosch_PPx is not 'verworfen'.
+
+  Details:
+  Object ID: [id_value] (if available)
+  Empty Columns: [list_of_empty_columns]
+  BRS-1Box_Status_Hersteller_Bosch_PPx: [status_value]
+  ```
+  - Object ID is included in details when available for easy requirement tracing
+  - Multiple empty attributes are listed under Empty Columns
+  - Grammar adapts to single/multiple empty attributes ("is"/"are")
+
 ### Export Checks
 
 #### 1. CR ID with Typ and BRS 1Box Status
