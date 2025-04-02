@@ -136,7 +136,7 @@ class ProjectCheckerPPE:
                         ),
                         'Value': (
                             f"Object ID: {row['Object ID']}\n"
-                            f"Empty Columns: {', '.join(empty_columns)}\n"
+                            f"Empty Attributes: {', '.join(empty_columns)}\n"
                             f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}"
                         )
                     })
@@ -396,7 +396,7 @@ class ProjectCheckerPPE:
                     # Add Object ID first if available
                     if 'Object ID' in df.columns and not pd.isna(row['Object ID']):
                         details.append(f"Object ID: {row['Object ID']}")
-                    details.append(f"Empty Columns: {', '.join(empty_columns)}")
+                    details.append(f"Empty Attributes: {', '.join(empty_columns)}")
                     details.append(f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
                     
                     findings.append({
