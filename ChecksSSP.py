@@ -349,3 +349,186 @@ class ProjectCheckerSSP:
                     })
 
         return findings
+
+    # Check Nr.9
+    @staticmethod
+    def check_quelle_with_status_oem_zu_lieferant_r(df, compare_df, file_path, compare_file_path):
+        """
+        Compares 'Quelle' attribute between customer and Bosch files.
+        If 'Quelle' differs, ensures 'Status OEM zu Lieferant R' is 'zu bewerten'.
+        Returns findings as a list of dictionaries.
+        """
+        findings = []
+        # Determine the identifier column dynamically
+        identifier_col = 'ReqIF.ForeignID' if 'ReqIF.ForeignID' in df.columns else 'Object ID'
+        compare_identifier_col = 'ForeignID' if 'ForeignID' in compare_df.columns else 'Object ID'
+
+        logger.info(f"Starting Quelle comparison check between {file_path} and {compare_file_path}")
+        logger.debug(f"Using identifier columns: {identifier_col} and {compare_identifier_col}")
+
+        # Check for required columns
+        required_columns = ['Quelle', identifier_col, 'Status OEM zu Lieferant R']
+        compare_required_columns = ['Quelle', compare_identifier_col]
+
+        # Check for missing columns in both DataFrames
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        missing_compare_columns = [col for col in compare_required_columns if col not in compare_df.columns]
+
+        if missing_columns or missing_compare_columns:
+            logger.warning(f"Missing columns in files:")
+            if missing_columns:
+                logger.warning(f"Customer file: {missing_columns}")
+            if missing_compare_columns:
+                logger.warning(f"Compare file: {missing_compare_columns}")
+            return findings
+
+        # Create a dictionary for quick lookup of 'Quelle' from compare file
+        compare_dict = compare_df.set_index(compare_identifier_col)['Quelle'].to_dict()
+
+        # Iterate through rows in the main DataFrame
+        for index, row in df.iterrows():
+            object_id = row[identifier_col]
+            quelle = row['Quelle']
+            oem_status = row.get('Status OEM zu Lieferant R', None)
+            if pd.isna(oem_status):
+                oem_status = "Empty"
+            else:
+                oem_status = str(oem_status).rstrip(',')
+
+            # Skip rows with missing 'Object ID'
+            if pd.isna(object_id):
+                continue
+
+            # Check if the 'Object ID' exists in the compare file
+            if object_id in compare_dict:
+                compare_quelle = compare_dict[object_id]
+
+                # Convert to string and strip whitespace
+                quelle_str = str(quelle) if not pd.isna(quelle) else ""
+                compare_quelle_str = str(compare_quelle) if not pd.isna(compare_quelle) else ""
+                quelle_str = quelle_str.strip()
+                compare_quelle_str = compare_quelle_str.strip()
+
+                # Skip only if both Quelle values are empty
+                if not quelle_str and not compare_quelle_str:
+                    continue
+
+                # Normalize both Quelle values
+                normalized_quelle = HelperFunctions.normalize_text(quelle_str)
+                normalized_compare_quelle = HelperFunctions.normalize_text(compare_quelle_str)
+
+                if normalized_quelle != normalized_compare_quelle:
+                    if oem_status not in ['zu bewerten,', 'verworfen,']:
+                        findings.append({
+                            'Row': index + 2,  # Adjust for Excel row numbering
+                            'Attribute': 'Quelle, Status OEM zu Lieferant R',
+                            'Issue': (
+                                f"'Quelle' differs between files but 'Status OEM zu Lieferant R' is not 'zu bewerten'."
+                            ),
+                            'Value': (
+                                f"{identifier_col}: {object_id}\n\n"
+                                f"---------------\n"
+                                f"       Customer File Name: {os.path.basename(file_path)}\n"
+                                f"       Customer File Quelle: {quelle_str}\n"
+                                f"---------------\n"
+                                f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
+                                f"       Bosch File Quelle: {compare_quelle_str}\n"
+                                f"---------------\n"
+                                f"       Status OEM zu Lieferant R: {oem_status}\n\n"
+                                f"       Expected Status: zu bewerten"
+                            )
+                        })
+
+        logger.info(f"Completed Quelle comparison check. Found {len(findings)} issues.")
+        return findings
+
+    # Check Nr.10
+    @staticmethod
+    def check_text_differences_without_status_validation(df, compare_df, file_path, compare_file_path):
+        """
+        Compares 'ReqIF.Text' from customer file with 'Object Text' from Bosch file.
+        Reports any differences found, regardless of 'Status OEM zu Lieferant R' value.
+        Uses the same text normalization as Check Nr. 6.
+        Returns findings as a list of dictionaries.
+        """
+        findings = []
+        # Determine the identifier column dynamically
+        identifier_col = 'ReqIF.ForeignID' if 'ReqIF.ForeignID' in df.columns else 'Object ID'
+        compare_identifier_col = 'ForeignID' if 'ForeignID' in compare_df.columns else 'Object ID'
+
+        logger.info(f"Starting text comparison check between {file_path} and {compare_file_path}")
+        logger.debug(f"Using identifier columns: {identifier_col} and {compare_identifier_col}")
+
+        # Check for required columns
+        required_columns = ['ReqIF.Text', identifier_col, 'Status OEM zu Lieferant R']
+        compare_required_columns = ['Object Text', compare_identifier_col]
+
+        # Check for missing columns in both DataFrames
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        missing_compare_columns = [col for col in compare_required_columns if col not in compare_df.columns]
+
+        if missing_columns or missing_compare_columns:
+            logger.warning(f"Missing columns in files:")
+            if missing_columns:
+                logger.warning(f"Customer file: {missing_columns}")
+            if missing_compare_columns:
+                logger.warning(f"Compare file: {missing_compare_columns}")
+            return findings
+
+        # Create a dictionary for quick lookup of 'Object Text' from compare file
+        compare_dict = compare_df.set_index(compare_identifier_col)['Object Text'].to_dict()
+
+        # Iterate through rows in the main DataFrame
+        for index, row in df.iterrows():
+            object_id = row[identifier_col]
+            reqif_text = row['ReqIF.Text']
+            oem_status = row.get('Status OEM zu Lieferant R', None)
+            if pd.isna(oem_status):
+                oem_status = "Empty"
+            else:
+                oem_status = str(oem_status).rstrip(',')
+
+            # Skip rows with missing 'Object ID'
+            if pd.isna(object_id):
+                continue
+
+            # Check if the 'Object ID' exists in the compare file
+            if object_id in compare_dict:
+                compare_text = compare_dict[object_id]
+
+                # Convert to string and strip whitespace
+                reqif_text_str = str(reqif_text) if not pd.isna(reqif_text) else ""
+                compare_text_str = str(compare_text) if not pd.isna(compare_text) else ""
+                reqif_text_str = reqif_text_str.strip()
+                compare_text_str = compare_text_str.strip()
+
+                # Skip only if both texts are empty
+                if not reqif_text_str and not compare_text_str:
+                    continue
+
+                # Normalize both texts using the same function as Check Nr. 6
+                normalized_reqif_text = HelperFunctions.normalize_text(reqif_text_str)
+                normalized_compare_text = HelperFunctions.normalize_text(compare_text_str)
+
+                if normalized_reqif_text != normalized_compare_text:
+                    findings.append({
+                        'Row': index + 2,  # Adjust for Excel row numbering
+                        'Attribute': 'ReqIF.Text, Object Text',
+                        'Issue': (
+                            f"'ReqIF.Text' differs from 'Object Text' between files."
+                        ),
+                        'Value': (
+                            f"{identifier_col}: {object_id}\n\n"
+                            f"---------------\n"
+                            f"       Customer File Name: {os.path.basename(file_path)}\n"
+                            f"       Customer File Object Text: {reqif_text_str}\n"
+                            f"---------------\n"
+                            f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
+                            f"       Bosch File Object Text: {compare_text_str}\n"
+                            f"---------------\n"
+                            f"       Status OEM zu Lieferant R: {oem_status}"
+                        )
+                    })
+
+        logger.info(f"Completed text comparison check. Found {len(findings)} differences.")
+        return findings

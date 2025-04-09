@@ -149,6 +149,14 @@ class ChecksProcessor:
                     # check 8
                     findings += ProjectCheckerSSP.check_multiple_attributes_with_status_oem_zu_lieferant_r(
                         df, self.compare_df, file_path, self.compare_file)
+                    
+                    #check 9
+                    findings += ProjectCheckerSSP.check_quelle_with_status_oem_zu_lieferant_r(
+                        df, self.compare_df, file_path, self.compare_file)
+                    
+                    #check 10
+                    findings += ProjectCheckerSSP.check_text_differences_without_status_validation(
+                        df, self.compare_df, file_path, self.compare_file)
             else:
                 # Export check BOSCH ==> AUDI
                 print("[SSP] NO EXPORT CHECKS DEFINED SOFAR")

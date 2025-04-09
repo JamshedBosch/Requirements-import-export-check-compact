@@ -150,6 +150,71 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
   - Findings generated for all other status values when attributes differ
 - **Finding Trigger**: Attribute differences with status not being 'zu bewerten' or 'verworfen'
 
+#### 9. Quelle with Status OEM zu Lieferant R
+**Method**: `check_quelle_with_status_oem_zu_lieferant_r`
+- **Purpose**: Compares 'Quelle' attribute between customer and Bosch files
+- **Features**:
+  - Supports both 'ReqIF.ForeignID' and 'Object ID' as identifiers
+  - Compares 'Quelle' values between files
+- **Status Handling**:
+  - No findings generated if Status OEM zu Lieferant R is:
+    * 'zu bewerten' OR
+    * 'verworfen'
+  - Findings generated for all other status values when Quelle differs
+- **Finding Trigger**: Quelle differences with status not being 'zu bewerten' or 'verworfen'
+- **Report Format**:
+  ```
+  Row: [row_number]
+  Attribute: Quelle, Status OEM zu Lieferant R
+  Issue: 'Quelle' differs between files but 'Status OEM zu Lieferant R' is not 'zu bewerten'.
+  Value:
+  [identifier]: [value]
+  ---------------
+  Customer File Name: [filename]
+  Customer File Quelle: [value]
+  ---------------
+  Bosch File Name: [filename]
+  Bosch File Quelle: [value]
+  ---------------
+  Status OEM zu Lieferant R: [status]
+  Expected Status: zu bewerten
+  ```
+  - Includes file names for both customer and Bosch files
+  - Shows Quelle values from both files for comparison
+  - Displays current and expected status values
+
+#### 10. Text Differences Without Status Validation
+**Method**: `check_text_differences_without_status_validation`
+- **Purpose**: Compares requirement texts between customer and Bosch files without status validation
+- **Features**:
+  - Supports both 'ReqIF.ForeignID' and 'Object ID' as identifiers
+  - Compares 'ReqIF.Text' with 'Object Text'
+  - Reports all differences regardless of status
+- **Key Differences from Check Nr.6**:
+  - No status validation (reports differences for all status values)
+  - Focuses purely on text comparison
+  - Includes current status in findings for information
+- **Finding Trigger**: Any difference between ReqIF.Text and Object Text
+- **Report Format**:
+  ```
+  Row: [row_number]
+  Attribute: ReqIF.Text, Object Text
+  Issue: 'ReqIF.Text' differs from 'Object Text' between files.
+  Value:
+  [identifier]: [value]
+  ---------------
+  Customer File Name: [filename]
+  Customer File ReqIF.Text: [value]
+  ---------------
+  Bosch File Name: [filename]
+  Bosch File Object Text: [value]
+  ---------------
+  Status OEM zu Lieferant R: [status]
+  ```
+  - Shows text values from both files for comparison
+  - Includes current status for reference
+  - Maintains consistent formatting with other checks
+
 ## Common Features
 
 ### Error Handling
