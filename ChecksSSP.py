@@ -429,10 +429,12 @@ class ProjectCheckerSSP:
                                 f"{identifier_col}: {object_id}\n\n"
                                 f"---------------\n"
                                 f"       Customer File Name: {os.path.basename(file_path)}\n"
-                                f"       Customer File Quelle: {quelle_str}\n"
+                                f"       Customer Attribute: Quelle\n"
+                                f"          Atrribute Value: {quelle_str}\n"
                                 f"---------------\n"
                                 f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
-                                f"       Bosch File Quelle: {compare_quelle_str}\n"
+                                f"       Bosch Attribute: Quelle\n"
+                                f"       Attribute Value: {compare_quelle_str}\n"
                                 f"---------------\n"
                                 f"       Status OEM zu Lieferant R: {oem_status}\n\n"
                                 f"       Expected Status: zu bewerten"
@@ -515,7 +517,7 @@ class ProjectCheckerSSP:
                         'Row': index + 2,  # Adjust for Excel row numbering
                         'Attribute': 'ReqIF.Text, Object Text',
                         'Issue': (
-                            f"'ReqIF.Text' differs from 'Object Text' between files."
+                            f"'ReqIF.Text' differs from 'Object Text' between files, may be the translation is needed (FOR INTERNAL USE ONLY!)."
                         ),
                         'Value': (
                             f"{identifier_col}: {object_id}\n\n"
