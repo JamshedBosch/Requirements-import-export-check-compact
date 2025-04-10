@@ -190,6 +190,7 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
   - Supports both 'ReqIF.ForeignID' and 'Object ID' as identifiers
   - Compares 'ReqIF.Text' with 'Object Text'
   - Reports all differences regardless of status
+  - Uses the same text normalization as Check Nr. 6
 - **Key Differences from Check Nr.6**:
   - No status validation (reports differences for all status values)
   - Focuses purely on text comparison
@@ -199,12 +200,12 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
   ```
   Row: [row_number]
   Attribute: ReqIF.Text, Object Text
-  Issue: 'ReqIF.Text' differs from 'Object Text' between files.
+  Issue: 'ReqIF.Text' differs from 'Object Text' between files, may be the translation is needed (FOR INTERNAL USE ONLY!).
   Value:
   [identifier]: [value]
   ---------------
   Customer File Name: [filename]
-  Customer File ReqIF.Text: [value]
+  Customer File Object Text: [value]
   ---------------
   Bosch File Name: [filename]
   Bosch File Object Text: [value]
@@ -214,6 +215,7 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
   - Shows text values from both files for comparison
   - Includes current status for reference
   - Maintains consistent formatting with other checks
+  - Indicates potential translation needs in the issue description
 
 ## Common Features
 
