@@ -275,12 +275,97 @@ class ReportGenerator:
             raise
 
     @staticmethod
-    def generate_translation_csv(file_path, report_folder, findings):
-        """Generate a CSV file listing requirements that need translation."""
+    def test_ole_object_handling():
+        """Test the OLE Object handling with various examples."""
+        test_cases = [
+            {
+                'name': 'DOOLE Object case',
+                'customer_text': 'Tabelle 8-1: Standard TABLES der DOOLE Object*) Die Angabe der PRE-CONDITION-STATE-REF',
+                'bosch_text': 'Tabelle 8-1: Standard TABLES der DO    *) Die Angabe der PRE-CONDITION-STATE-REF',
+                'expected_result': 'identical'
+            },
+            {
+                'name': 'Simple OLE Object case',
+                'customer_text': 'This is an OLE Object in the text',
+                'bosch_text': 'This is an in the text',
+                'expected_result': 'identical'
+            },
+            {
+                'name': 'Multiple OLE Objects',
+                'customer_text': 'First OLE Object and second OLE Object in text',
+                'bosch_text': 'First and second in text',
+                'expected_result': 'identical'
+            },
+            {
+                'name': 'OLE Object with spaces',
+                'customer_text': 'Text with OLE Object    and more text',
+                'bosch_text': 'Text with and more text',
+                'expected_result': 'identical'
+            },
+            {
+                'name': 'Different text case',
+                'customer_text': 'This is an OLE Object in the text',
+                'bosch_text': 'This is different text',
+                'expected_result': 'different'
+            },
+            {
+                'name': 'Empty text case',
+                'customer_text': 'OLE Object',
+                'bosch_text': '',
+                'expected_result': 'empty'
+            },
+            {
+                'name': 'Complex DOOLE case',
+                'customer_text': 'Some text DOOLE Object more text',
+                'bosch_text': 'Some text DO more text',
+                'expected_result': 'identical'
+            }
+        ]
+
+        def clean_ole_object_text(text):
+            """Clean text by removing OLE Object references and normalizing spaces."""
+            if not text:
+                return ""
+            # Remove various forms of OLE Object references
+            text = text.replace("OLE Object", "")
+            text = text.replace("DOOLE Object", "DO")
+            # Normalize spaces (replace multiple spaces with single space)
+            text = ' '.join(text.split())
+            # Handle special cases with *) and similar patterns
+            text = text.replace("DO*)", "DO *)")
+            text = text.replace("DO )*", "DO *)")
+            return text.strip()
+
+        print("\nTesting OLE Object handling:")
+        print("-" * 50)
+        
+        for case in test_cases:
+            clean_customer = clean_ole_object_text(case['customer_text'])
+            clean_bosch = clean_ole_object_text(case['bosch_text'])
+            
+            result = "different"
+            if not clean_customer:
+                result = "empty"
+            elif clean_customer == clean_bosch:
+                result = "identical"
+            
+            print(f"\nTest Case: {case['name']}")
+            print(f"Customer Text: '{case['customer_text']}'")
+            print(f"Bosch Text: '{case['bosch_text']}'")
+            print(f"Cleaned Customer: '{clean_customer}'")
+            print(f"Cleaned Bosch: '{clean_bosch}'")
+            print(f"Result: {result}")
+            print(f"Expected: {case['expected_result']}")
+            print(f"Test {'PASSED' if result == case['expected_result'] else 'FAILED'}")
+            print("-" * 50)
+
+    @staticmethod
+    def generate_translation_tsv(file_path, report_folder, findings):
+        """Generate a TSV file listing requirements that need translation."""
         try:
-            # Create CSV filename
+            # Create TSV filename
             base_name = os.path.basename(file_path).replace('.xlsx', '')
-            csv_file = os.path.join(report_folder, f"{base_name}_translation.csv")
+            tsv_file = os.path.join(report_folder, f"{base_name}_translation.tsv")
             
             # Extract requirement IDs from findings
             translation_data = []
@@ -336,31 +421,47 @@ class ReportGenerator:
                     })
                     continue
                 
-                # Handle OLE Object cases
-                if "OLE Object" in customer_text:
-                    # Remove "OLE Object" from customer text for comparison
-                    clean_customer_text = customer_text.replace("OLE Object", "").strip()
-                    
-                    # Skip if customer text is only "OLE Object"
-                    if not clean_customer_text:
-                        skipped_cases.append({
-                            'ID': req_id,
-                            'Reason': 'Customer text contains only OLE Object',
-                            'Customer Text': customer_text,
-                            'Bosch Text': bosch_text
-                        })
-                        continue
-                        
-                    # Skip if the only difference is the OLE Object suffix
-                    if clean_customer_text == bosch_text:
-                        skipped_cases.append({
-                            'ID': req_id,
-                            'Reason': 'Only difference is OLE Object suffix',
-                            'Customer Text': customer_text,
-                            'Bosch Text': bosch_text,
-                            'Cleaned Customer Text': clean_customer_text
-                        })
-                        continue
+                # Enhanced OLE Object handling
+                def clean_ole_object_text(text):
+                    """Clean text by removing OLE Object references and normalizing spaces."""
+                    if not text:
+                        return ""
+                    # Remove various forms of OLE Object references
+                    text = text.replace("OLE Object", "")
+                    text = text.replace("DOOLE Object", "DO")
+                    # Normalize spaces (replace multiple spaces with single space)
+                    text = ' '.join(text.split())
+                    # Handle special cases with *) and similar patterns
+                    text = text.replace("DO*)", "DO *)")
+                    text = text.replace("DO )*", "DO *)")
+                    return text.strip()
+
+                # Clean both texts
+                clean_customer_text = clean_ole_object_text(customer_text)
+                clean_bosch_text = clean_ole_object_text(bosch_text)
+
+                # Skip if cleaned texts are identical
+                if clean_customer_text == clean_bosch_text:
+                    skipped_cases.append({
+                        'ID': req_id,
+                        'Reason': 'Texts are identical after OLE Object cleaning',
+                        'Customer Text': customer_text,
+                        'Bosch Text': bosch_text,
+                        'Cleaned Customer Text': clean_customer_text,
+                        'Cleaned Bosch Text': clean_bosch_text
+                    })
+                    continue
+
+                # Skip if cleaned customer text is empty
+                if not clean_customer_text:
+                    skipped_cases.append({
+                        'ID': req_id,
+                        'Reason': 'Customer text is empty after OLE Object cleaning',
+                        'Customer Text': customer_text,
+                        'Bosch Text': bosch_text,
+                        'Cleaned Customer Text': clean_customer_text
+                    })
+                    continue
                 
                 # Add to translation data if we have a valid case
                 if is_foreign_id:
@@ -377,7 +478,7 @@ class ReportGenerator:
             
             # Log skipped cases
             if skipped_cases:
-                logger.info(f"Skipped {len(skipped_cases)} cases for translation CSV:")
+                logger.info(f"Skipped {len(skipped_cases)} cases for translation TSV:")
                 for case in skipped_cases:
                     logger.info(f"Skipped ID: {case['ID']}")
                     logger.info(f"Reason: {case['Reason']}")
@@ -385,21 +486,24 @@ class ReportGenerator:
                     logger.info(f"Bosch Text: '{case['Bosch Text']}'")
                     if 'Cleaned Customer Text' in case:
                         logger.info(f"Cleaned Customer Text: '{case['Cleaned Customer Text']}'")
+                    if 'Cleaned Bosch Text' in case:
+                        logger.info(f"Cleaned Bosch Text: '{case['Cleaned Bosch Text']}'")
                     logger.info("---")
             
-            # Create DataFrame and save to CSV
+            # Create DataFrame and save to TSV
             if translation_data:
                 df = pd.DataFrame(translation_data)
-                df.to_csv(csv_file, index=False)
-                logger.info(f"Translation CSV generated successfully: {csv_file}")
+                # Use tab as separator and ensure proper encoding
+                df.to_csv(tsv_file, sep='\t', index=False, encoding='utf-8')
+                logger.info(f"Translation TSV generated successfully: {tsv_file}")
                 logger.info(f"Included {len(translation_data)} requirements for translation")
-                return csv_file
+                return tsv_file
             else:
                 logger.info("No translation requirements found")
                 return None
                 
         except Exception as e:
-            logger.error(f"Error generating translation CSV: {str(e)}", exc_info=True)
+            logger.error(f"Error generating translation TSV: {str(e)}", exc_info=True)
             raise
 
     @staticmethod
@@ -417,7 +521,7 @@ class ReportGenerator:
                 report_file = ReportGenerator._generate_html_report(file_path, report_folder, findings)
             report_files.append(report_file)
             
-            # Generate translation CSV only for Check Nr. 10 findings
+            # Generate translation TSV only for Check Nr. 10 findings
             # Check Nr. 10 findings can be identified by their specific issue message
             translation_findings = [
                 finding for finding in findings 
@@ -425,9 +529,9 @@ class ReportGenerator:
             ]
             
             if translation_findings:
-                translation_csv = ReportGenerator.generate_translation_csv(file_path, report_folder, translation_findings)
-                if translation_csv:
-                    report_files.append(translation_csv)
+                translation_tsv = ReportGenerator.generate_translation_tsv(file_path, report_folder, translation_findings)
+                if translation_tsv:
+                    report_files.append(translation_tsv)
             
             logger.info(f"Successfully generated reports: {report_files}")
             return report_files
