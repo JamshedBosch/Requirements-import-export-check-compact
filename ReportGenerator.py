@@ -275,18 +275,162 @@ class ReportGenerator:
             raise
 
     @staticmethod
+    def generate_translation_csv(file_path, report_folder, findings):
+        """Generate a CSV file listing requirements that need translation."""
+        try:
+            # Create CSV filename
+            base_name = os.path.basename(file_path).replace('.xlsx', '')
+            csv_file = os.path.join(report_folder, f"{base_name}_translation.csv")
+            
+            # Extract requirement IDs from findings
+            translation_data = []
+            skipped_cases = []  # Track skipped cases for logging
+            
+            for finding in findings:
+                # Extract the requirement ID and texts from the Value field
+                value_lines = finding['Value'].split('\n')
+                req_id = None
+                customer_text = None
+                bosch_text = None
+                is_foreign_id = False
+                
+                for line in value_lines:
+                    if "ReqIF.ForeignID:" in line:
+                        req_id = line.split(":", 1)[1].strip()
+                        is_foreign_id = True
+                    elif "Object ID:" in line:
+                        req_id = line.split(":", 1)[1].strip()
+                        is_foreign_id = False
+                    elif "Customer File Object Text:" in line:
+                        customer_text = line.split(":", 1)[1].strip()
+                    elif "Bosch File Object Text:" in line:
+                        bosch_text = line.split(":", 1)[1].strip()
+                
+                # Skip if we couldn't find the requirement ID
+                if not req_id:
+                    skipped_cases.append({
+                        'ID': 'Unknown',
+                        'Reason': 'Missing requirement ID',
+                        'Customer Text': customer_text,
+                        'Bosch Text': bosch_text
+                    })
+                    continue
+                    
+                # Skip if customer text is empty
+                if not customer_text or customer_text == "Empty":
+                    skipped_cases.append({
+                        'ID': req_id,
+                        'Reason': 'Customer text is empty',
+                        'Customer Text': customer_text,
+                        'Bosch Text': bosch_text
+                    })
+                    continue
+                    
+                # Skip if both texts are empty
+                if (not customer_text or customer_text == "Empty") and (not bosch_text or bosch_text == "Empty"):
+                    skipped_cases.append({
+                        'ID': req_id,
+                        'Reason': 'Both texts are empty',
+                        'Customer Text': customer_text,
+                        'Bosch Text': bosch_text
+                    })
+                    continue
+                
+                # Handle OLE Object cases
+                if "OLE Object" in customer_text:
+                    # Remove "OLE Object" from customer text for comparison
+                    clean_customer_text = customer_text.replace("OLE Object", "").strip()
+                    
+                    # Skip if customer text is only "OLE Object"
+                    if not clean_customer_text:
+                        skipped_cases.append({
+                            'ID': req_id,
+                            'Reason': 'Customer text contains only OLE Object',
+                            'Customer Text': customer_text,
+                            'Bosch Text': bosch_text
+                        })
+                        continue
+                        
+                    # Skip if the only difference is the OLE Object suffix
+                    if clean_customer_text == bosch_text:
+                        skipped_cases.append({
+                            'ID': req_id,
+                            'Reason': 'Only difference is OLE Object suffix',
+                            'Customer Text': customer_text,
+                            'Bosch Text': bosch_text,
+                            'Cleaned Customer Text': clean_customer_text
+                        })
+                        continue
+                
+                # Add to translation data if we have a valid case
+                if is_foreign_id:
+                    translation_data.append({
+                        'ForeignID': req_id,
+                        'English_Translation': 'Translation required'
+                    })
+                else:
+                    translation_data.append({
+                        'Object ID': req_id,
+                        'Object Text English': 'Translation required'
+                    })
+                logger.debug(f"Included requirement {req_id} for translation - Customer text: '{customer_text}', Bosch text: '{bosch_text}'")
+            
+            # Log skipped cases
+            if skipped_cases:
+                logger.info(f"Skipped {len(skipped_cases)} cases for translation CSV:")
+                for case in skipped_cases:
+                    logger.info(f"Skipped ID: {case['ID']}")
+                    logger.info(f"Reason: {case['Reason']}")
+                    logger.info(f"Customer Text: '{case['Customer Text']}'")
+                    logger.info(f"Bosch Text: '{case['Bosch Text']}'")
+                    if 'Cleaned Customer Text' in case:
+                        logger.info(f"Cleaned Customer Text: '{case['Cleaned Customer Text']}'")
+                    logger.info("---")
+            
+            # Create DataFrame and save to CSV
+            if translation_data:
+                df = pd.DataFrame(translation_data)
+                df.to_csv(csv_file, index=False)
+                logger.info(f"Translation CSV generated successfully: {csv_file}")
+                logger.info(f"Included {len(translation_data)} requirements for translation")
+                return csv_file
+            else:
+                logger.info("No translation requirements found")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error generating translation CSV: {str(e)}", exc_info=True)
+            raise
+
+    @staticmethod
     def generate_report(file_path, report_folder, report_type, findings):
         logger.info(f"Generating {report_type} report for {file_path}")
         
         try:
             report_type = report_type.lower()
+            report_files = []
+            
+            # Generate the main report (HTML or Excel)
             if report_type == 'excel':
                 report_file = ReportGenerator.generate_excel_report(file_path, report_folder, findings)
             else:
                 report_file = ReportGenerator._generate_html_report(file_path, report_folder, findings)
+            report_files.append(report_file)
             
-            logger.info(f"Successfully generated report: {report_file}")
-            return report_file
+            # Generate translation CSV only for Check Nr. 10 findings
+            # Check Nr. 10 findings can be identified by their specific issue message
+            translation_findings = [
+                finding for finding in findings 
+                if finding.get('Issue', '').startswith("'ReqIF.Text' differs from 'Object Text' between files")
+            ]
+            
+            if translation_findings:
+                translation_csv = ReportGenerator.generate_translation_csv(file_path, report_folder, translation_findings)
+                if translation_csv:
+                    report_files.append(translation_csv)
+            
+            logger.info(f"Successfully generated reports: {report_files}")
+            return report_files
             
         except Exception as e:
             logger.error(f"Error generating report: {str(e)}", exc_info=True)
