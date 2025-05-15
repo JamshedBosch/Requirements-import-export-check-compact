@@ -120,12 +120,39 @@ The `ProjectCheckerSSP` class implements checks for SSP (System and Software Pla
 - **Features**:
   - Supports both 'ReqIF.ForeignID' and 'Object ID' as identifiers
   - Compares 'ReqIF.Text' with 'Object Text'
+  - Uses text normalization for consistent comparison
 - **Status Handling**:
   - No findings generated if Status OEM zu Lieferant R is:
     * 'zu bewerten' OR
     * 'verworfen'
+  - Status comparison is comma-insensitive (handles both with and without trailing comma)
   - Findings generated for all other status values when texts differ
+- **Text Comparison**:
+  - Normalizes text by removing extra spaces and standardizing formatting
+  - Skips comparison if both texts are empty
+  - Handles NULL/empty values gracefully
 - **Finding Trigger**: Text differences with status not being 'zu bewerten' or 'verworfen'
+- **Report Format**:
+  ```
+  Row: [row_number]
+  Attribute: ReqIF.Text, Status OEM zu Lieferant R
+  Issue: 'ReqIF.Text' differs from 'Object Text' but 'Status OEM zu Lieferant R' is not 'zu bewerten'.
+  Value:
+  [identifier]: [value]
+  ---------------
+  Customer File Name: [filename]
+  Customer File Object Text: [value]
+  ---------------
+  Bosch File Name: [filename]
+  Bosch File Object Text: [value]
+  ---------------
+  Status OEM zu Lieferant R: [status]
+  Expected Status: zu bewerten
+  ```
+  - Includes file names for both customer and Bosch files
+  - Shows text values from both files for comparison
+  - Displays current and expected status values
+  - Maintains consistent formatting with other checks
 
 #### 8. Multiple Attributes with Status OEM zu Lieferant R
 **Method**: `check_multiple_attributes_with_status_oem_zu_lieferant_r`

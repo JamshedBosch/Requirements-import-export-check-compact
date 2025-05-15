@@ -90,7 +90,9 @@ class ProjectCheckerSSP:
                 normalized_compare_text = HelperFunctions.normalize_text(
                     compare_text_str)
                 if normalized_object_text != normalized_compare_text:
-                    if oem_status not in ['zu bewerten,', 'verworfen,']:
+                    # Strip any trailing comma from oem_status for comparison
+                    oem_status_clean = oem_status.rstrip(',')
+                    if oem_status_clean not in ['zu bewerten', 'verworfen']:
                         findings.append({
                             'Row': index + 2,  # Adjust for Excel row numbering
                             'Attribute': 'ReqIF.Text, Status OEM zu Lieferant R',
