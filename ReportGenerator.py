@@ -464,15 +464,17 @@ class ReportGenerator:
                     continue
                 
                 # Add to translation data if we have a valid case
+                #Prio 1
                 if is_foreign_id:
                     translation_data.append({
                         'ForeignID': req_id,
-                        'English_Translation': 'Translation required'
+                        'English_Translation': 'New translation required'
                     })
+                #QSLAH
                 else:
                     translation_data.append({
                         'Object ID': req_id,
-                        'Object Text English': 'Translation required'
+                        'Object Text English': 'New translation required'
                     })
                 logger.debug(f"Included requirement {req_id} for translation - Customer text: '{customer_text}', Bosch text: '{bosch_text}'")
             
