@@ -125,14 +125,45 @@ class ReportGenerator:
         text1 = text1.strip()
         text2 = text2.strip()
 
-        # Debugging: Print the raw input to check if text2 is truly empty
-        # print(f"DEBUG - text1: {repr(text1)} | text2: {repr(text2)}")
+        # Normalize special characters and spaces
+        def normalize_text(text):
+            if not text:
+                return ""
+            # Replace special characters with standard ones
+            text = text.replace('⏐', '|')  # Replace box drawing character
+            text = text.replace('½', '|')  # Replace half fraction
+            text = text.replace('…', '...')  # Replace ellipsis
+            text = text.replace('–', '-')  # Replace en dash
+            text = text.replace('—', '-')  # Replace em dash
+            text = text.replace('"', '"')  # Replace smart quotes
+            text = text.replace('"', '"')
+            text = text.replace(''', "'")
+            text = text.replace(''', "'")
+            
+            # Normalize spaces and line breaks
+            text = ' '.join(text.split())  # Replace multiple spaces with single space
+            text = text.replace('\n', ' ')  # Replace newlines with spaces
+            text = text.replace('\r', ' ')  # Replace carriage returns with spaces
+            text = text.replace('\t', ' ')  # Replace tabs with spaces
+            
+            # Remove multiple spaces again after all replacements
+            text = ' '.join(text.split())
+            
+            return text.strip()
+
+        # Normalize both texts
+        text1 = normalize_text(text1)
+        text2 = normalize_text(text2)
 
         # If one of the texts is empty, highlight the other entirely
         if text1 and not text2:
             return f'<span class="diff-del">{text1}</span>', '<span class="diff-add">Empty</span>'
         if text2 and not text1:
             return '<span class="diff-del">Empty</span>', f'<span class="diff-add">{text2}</span>'
+
+        # If texts are identical after normalization, return them without highlighting
+        if text1 == text2:
+            return text1, text2
 
         matcher = difflib.SequenceMatcher(None, text1, text2)
         result1, result2 = [], []
@@ -150,8 +181,6 @@ class ReportGenerator:
                 result1.append(f'<span class="diff-del">{text1[i1:i2]}</span>')
 
         return ''.join(result1), ''.join(result2)
-
-
 
     @staticmethod
     def generate_html_content(file_name, total_issues, issues_content):

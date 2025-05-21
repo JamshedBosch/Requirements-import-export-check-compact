@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from HelperFunc import HelperFunctions
 from logger_config import logger
+import re
 
 
 class ProjectCheckerSSP:
@@ -15,6 +16,7 @@ class ProjectCheckerSSP:
         Compares the 'ReqIF.Text' attribute with 'Object Text' attribute from a compare file.
         If 'Object Text' differs from 'ReqIF.Text', ensure 'Status OEM zu Lieferant R' is 'zu bewerten'.
         Handles cases where the identifier is either 'ReqIF.ForeignID' or 'Object ID'.
+        Ignores differences in special symbols (e.g., σ vs s, Δ vs ?).
         Logs findings if the condition is not met.
         """
         findings = []
@@ -34,15 +36,6 @@ class ProjectCheckerSSP:
                            col not in df.columns]
         missing_compare_columns = [col for col in compare_required_columns if
                                    col not in compare_df.columns]
-
-        # # Ensure required columns exist in both DataFrames
-        # required_columns = ['ReqIF.Text', 'ReqIF.ForeignID',
-        #                     'Status OEM zu Lieferant R', 'Object Text',
-        #                     'ForeignID']
-        # missing_columns = [col for col in required_columns[:3] if
-        #                    col not in df.columns]
-        # missing_compare_columns = [col for col in required_columns[3:] if
-        #                            col not in compare_df.columns]
 
         if missing_columns or missing_compare_columns:
             logger.warning(f"Missing columns in files:")
@@ -83,6 +76,10 @@ class ProjectCheckerSSP:
                 # Skip only if both texts are empty
                 if not object_text_str and not compare_text_str:
                     continue
+
+                # Normalize special symbols in both texts
+                object_text_str = HelperFunctions.normalize_symbols(object_text_str)
+                compare_text_str = HelperFunctions.normalize_symbols(compare_text_str)
 
                 # Normalize both object_text and compare_text
                 normalized_object_text = HelperFunctions.normalize_text(
@@ -452,6 +449,8 @@ class ProjectCheckerSSP:
         """
         Compares 'ReqIF.Text' from customer file with 'Object Text' from Bosch file.
         Reports any differences found, regardless of 'Status OEM zu Lieferant R' value.
+        Ignores differences in embedded objects (images, .wmf files, etc.).
+        Skips findings if 'Status OEM zu Lieferant R' is 'verworfen'.
         Uses the same text normalization as Check Nr. 6.
         Returns findings as a list of dictionaries.
         """
@@ -482,6 +481,14 @@ class ProjectCheckerSSP:
         # Create a dictionary for quick lookup of 'Object Text' from compare file
         compare_dict = compare_df.set_index(compare_identifier_col)['Object Text'].to_dict()
 
+        # Function to remove embedded object references
+        def remove_embedded_objects(text):
+            if not isinstance(text, str):
+                return text
+            # Remove embedded object references (images, .wmf files, etc.)
+            text = re.sub(r'Embedded object:.*?\.(png|wmf|jpg|jpeg|gif)', '', text)
+            return text.strip()
+
         # Iterate through rows in the main DataFrame
         for index, row in df.iterrows():
             object_id = row[identifier_col]
@@ -494,6 +501,10 @@ class ProjectCheckerSSP:
 
             # Skip rows with missing 'Object ID'
             if pd.isna(object_id):
+                continue
+
+            # Skip if status is 'verworfen'
+            if oem_status == 'verworfen':
                 continue
 
             # Check if the 'Object ID' exists in the compare file
@@ -509,6 +520,14 @@ class ProjectCheckerSSP:
                 # Skip only if both texts are empty
                 if not reqif_text_str and not compare_text_str:
                     continue
+
+                # Remove embedded object references before normalization
+                reqif_text_str = remove_embedded_objects(reqif_text_str)
+                compare_text_str = remove_embedded_objects(compare_text_str)
+
+                # Normalize special symbols in both texts
+                reqif_text_str = HelperFunctions.normalize_symbols(reqif_text_str)
+                compare_text_str = HelperFunctions.normalize_symbols(compare_text_str)
 
                 # Normalize both texts using the same function as Check Nr. 6
                 normalized_reqif_text = HelperFunctions.normalize_text(reqif_text_str)
