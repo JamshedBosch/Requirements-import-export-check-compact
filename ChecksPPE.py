@@ -148,12 +148,14 @@ class ProjectCheckerPPE:
         """
         Checks if 'CR-ID_Bosch_PPx' is empty for any
         'BRS-1Box_Status_Hersteller_Bosch_PPx' status.
+        Only checks requirements where 'Typ' is 'Anforderung' (with or without comma).
         Returns findings as a list of dictionaries.
         """
         findings = []
         # Check for required columns
         required_columns = ['CR-ID_Bosch_PPx',
-                            'BRS-1Box_Status_Hersteller_Bosch_PPx']
+                            'BRS-1Box_Status_Hersteller_Bosch_PPx',
+                            'Typ']
         missing_columns = [col for col in required_columns if
                            col not in df.columns]
         if missing_columns:
@@ -172,15 +174,18 @@ class ProjectCheckerPPE:
             else:
                 brs_status = str(brs_status).rstrip(',')
 
-            if pd.isna(row['CR-ID_Bosch_PPx']):  # Check if 'CR-ID_Bosch_PPx' is empty
-                findings.append({
-                    'Row': index + 2,
-                    'Attribute': 'CR-ID_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
-                    'Issue': ("'CR-ID_Bosch_PPx' is empty while "
-                              "'BRS-1Box_Status_Hersteller_Bosch_PPx' has a value."),
-                    'Value': (f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}, "
-                              f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
-                })
+            # Check if type is "Anforderung" (with or without comma)
+            typ_value = str(row['Typ']).rstrip(',')
+            if typ_value == "Anforderung":
+                if pd.isna(row['CR-ID_Bosch_PPx']):  # Check if 'CR-ID_Bosch_PPx' is empty
+                    findings.append({
+                        'Row': index + 2,
+                        'Attribute': 'CR-ID_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
+                        'Issue': ("'CR-ID_Bosch_PPx' is empty while "
+                                  "'BRS-1Box_Status_Hersteller_Bosch_PPx' has a value."),
+                        'Value': (f"CR-ID_Bosch_PPx: Empty, "
+                                  f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
+                    })
         return findings
 
     # Check Nr.6

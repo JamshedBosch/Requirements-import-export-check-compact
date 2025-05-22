@@ -17,6 +17,7 @@ class ProjectCheckerSSP:
         If 'Object Text' differs from 'ReqIF.Text', ensure 'Status OEM zu Lieferant R' is 'zu bewerten'.
         Handles cases where the identifier is either 'ReqIF.ForeignID' or 'Object ID'.
         Ignores differences in special symbols (e.g., σ vs s, Δ vs ?).
+        Ignores items with ReqIF.Category/Typ 'Überschrift' or 'Information'.
         Logs findings if the condition is not met.
         """
         findings = []
@@ -27,8 +28,11 @@ class ProjectCheckerSSP:
         logger.info(f"Starting text comparison check between {file_path} and {compare_file_path}")
         logger.debug(f"Using identifier columns: {identifier_col} and {compare_identifier_col}")
 
+        # Check which category/type column exists
+        category_col = 'ReqIF.Category' if 'ReqIF.Category' in df.columns else 'Typ'
+        
         required_columns = ['ReqIF.Text', identifier_col,
-                            'Status OEM zu Lieferant R']
+                            'Status OEM zu Lieferant R', category_col]
         compare_required_columns = ['Object Text', compare_identifier_col]
 
         # Check for missing columns in both DataFrames
@@ -54,12 +58,20 @@ class ProjectCheckerSSP:
             object_id = row[identifier_col]
             object_text = row['ReqIF.Text']
             oem_status = row.get('Status OEM zu Lieferant R', None)
+            category = row.get(category_col, None)
+            
             if pd.isna(oem_status):
                 oem_status = "Empty"
-
+            
             # Skip rows with missing 'Object ID'
             if pd.isna(object_id):
                 continue
+
+            # Skip if category is 'Überschrift' or 'Information'
+            if not pd.isna(category):
+                category = str(category).rstrip(',').strip()
+                if category in ['Überschrift', 'Information']:
+                    continue
 
             # Check if the 'Object ID' exists in the compare file
             if object_id in compare_dict:
@@ -97,7 +109,8 @@ class ProjectCheckerSSP:
                                 f"'ReqIF.Text' differs from 'Object Text' but 'Status OEM zu Lieferant R' is not 'zu bewerten."
                             ),
                             'Value': (
-                                f"{identifier_col}: {object_id}\n\n"
+                                f"{identifier_col}: {object_id}\n"
+                                f"{category_col}: {category}\n\n"
                                 f"---------------\n"
                                 f"       Customer File Name: {os.path.basename(file_path)}\n"
                                 f"       Customer File Object Text: {object_text_str}\n"
@@ -137,6 +150,9 @@ class ProjectCheckerSSP:
         # Determine the identifier column dynamically
         identifier_col = 'ReqIF.ForeignID' if 'ReqIF.ForeignID' in df.columns else 'Object ID'
         compare_identifier_col = 'ForeignID' if 'ForeignID' in compare_df.columns else 'Object ID'
+
+        # Check which category/type column exists
+        category_col = 'ReqIF.Category' if 'ReqIF.Category' in df.columns else 'Typ'
 
         # Define full attribute pairs for ReqIF.Category files
         full_attribute_pairs = [
@@ -195,7 +211,7 @@ class ProjectCheckerSSP:
             return findings  # Return empty findings only if there are truly no attributes to check
 
         # Validate all required columns exist in customer file
-        customer_required_cols = [identifier_col, 'Status OEM zu Lieferant R'] + [pair[0] for pair in attribute_pairs]
+        customer_required_cols = [identifier_col, 'Status OEM zu Lieferant R', category_col] + [pair[0] for pair in attribute_pairs]
         missing_customer_cols = [col for col in customer_required_cols if col not in df.columns]
 
         # Validate all required columns exist in Bosch file
@@ -254,6 +270,8 @@ class ProjectCheckerSSP:
         for index, row in df.iterrows():
             object_id = row[identifier_col]
             oem_status = row.get('Status OEM zu Lieferant R', None)
+            category = row.get(category_col, None)
+            
             if pd.isna(oem_status):
                 oem_status = "Empty"
 
@@ -336,6 +354,7 @@ class ProjectCheckerSSP:
                         'Issue': "Attributes differ but 'Status OEM zu Lieferant R' is not 'zu bewerten'.",
                         'Value': (
                             f"{identifier_col}: {object_id}\n"
+                            f"{category_col}: {category}\n\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
@@ -362,11 +381,14 @@ class ProjectCheckerSSP:
         identifier_col = 'ReqIF.ForeignID' if 'ReqIF.ForeignID' in df.columns else 'Object ID'
         compare_identifier_col = 'ForeignID' if 'ForeignID' in compare_df.columns else 'Object ID'
 
+        # Check which category/type column exists
+        category_col = 'ReqIF.Category' if 'ReqIF.Category' in df.columns else 'Typ'
+
         logger.info(f"Starting Quelle comparison check between {file_path} and {compare_file_path}")
         logger.debug(f"Using identifier columns: {identifier_col} and {compare_identifier_col}")
 
         # Check for required columns
-        required_columns = ['Quelle', identifier_col, 'Status OEM zu Lieferant R']
+        required_columns = ['Quelle', identifier_col, 'Status OEM zu Lieferant R', category_col]
         compare_required_columns = ['Quelle', compare_identifier_col]
 
         # Check for missing columns in both DataFrames
@@ -389,6 +411,8 @@ class ProjectCheckerSSP:
             object_id = row[identifier_col]
             quelle = row['Quelle']
             oem_status = row.get('Status OEM zu Lieferant R', None)
+            category = row.get(category_col, None)
+            
             if pd.isna(oem_status):
                 oem_status = "Empty"
             else:
@@ -425,7 +449,8 @@ class ProjectCheckerSSP:
                                 f"'Quelle' differs between files but 'Status OEM zu Lieferant R' is not 'zu bewerten'."
                             ),
                             'Value': (
-                                f"{identifier_col}: {object_id}\n\n"
+                                f"{identifier_col}: {object_id}\n"
+                                f"{category_col}: {category}\n\n"
                                 f"---------------\n"
                                 f"       Customer File Name: {os.path.basename(file_path)}\n"
                                 f"       Customer Attribute: Quelle\n"
@@ -459,11 +484,14 @@ class ProjectCheckerSSP:
         identifier_col = 'ReqIF.ForeignID' if 'ReqIF.ForeignID' in df.columns else 'Object ID'
         compare_identifier_col = 'ForeignID' if 'ForeignID' in compare_df.columns else 'Object ID'
 
+        # Check which category/type column exists
+        category_col = 'ReqIF.Category' if 'ReqIF.Category' in df.columns else 'Typ'
+
         logger.info(f"Starting text comparison check between {file_path} and {compare_file_path}")
         logger.debug(f"Using identifier columns: {identifier_col} and {compare_identifier_col}")
 
         # Check for required columns
-        required_columns = ['ReqIF.Text', identifier_col, 'Status OEM zu Lieferant R']
+        required_columns = ['ReqIF.Text', identifier_col, 'Status OEM zu Lieferant R', category_col]
         compare_required_columns = ['Object Text', compare_identifier_col]
 
         # Check for missing columns in both DataFrames
@@ -494,6 +522,8 @@ class ProjectCheckerSSP:
             object_id = row[identifier_col]
             reqif_text = row['ReqIF.Text']
             oem_status = row.get('Status OEM zu Lieferant R', None)
+            category = row.get(category_col, None)
+            
             if pd.isna(oem_status):
                 oem_status = "Empty"
             else:
@@ -541,7 +571,8 @@ class ProjectCheckerSSP:
                             f"'ReqIF.Text' differs from 'Object Text' between files, may be the translation is needed (FOR INTERNAL USE ONLY!)."
                         ),
                         'Value': (
-                            f"{identifier_col}: {object_id}\n\n"
+                            f"{identifier_col}: {object_id}\n"
+                            f"{category_col}: {category}\n\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Customer File Object Text: {reqif_text_str}\n"
