@@ -142,6 +142,7 @@ class ProjectCheckerSSP:
 
         If any of these attributes differ, ensures 'Status OEM zu Lieferant R' is 'zu bewerten'.
         Handles cases where the identifier is either 'ReqIF.ForeignID' or 'Object ID'.
+        Ignores items with ReqIF.Category/Typ 'Überschrift' or 'Information'.
         Thoroughly normalizes text by replacing commas with spaces, removing extra spaces,
         and comparing the same items regardless of order or separator style.
         Logs findings if the condition is not met with a simplified format showing only differing attributes.
@@ -279,6 +280,12 @@ class ProjectCheckerSSP:
             if pd.isna(object_id):
                 continue
 
+            # Skip if category is 'Überschrift' or 'Information'
+            if not pd.isna(category):
+                category = str(category).rstrip(',').strip()
+                if category in ['Überschrift', 'Information']:
+                    continue
+
             # Clean up oem_status by stripping trailing comma
             oem_status = str(row.get('Status OEM zu Lieferant R', '')).rstrip(',')
             if pd.isna(oem_status) or oem_status == "":
@@ -374,6 +381,7 @@ class ProjectCheckerSSP:
         """
         Compares 'Quelle' attribute between customer and Bosch files.
         If 'Quelle' differs, ensures 'Status OEM zu Lieferant R' is 'zu bewerten'.
+        Ignores items with ReqIF.Category/Typ 'Überschrift' or 'Information'.
         Returns findings as a list of dictionaries.
         """
         findings = []
@@ -421,6 +429,12 @@ class ProjectCheckerSSP:
             # Skip rows with missing 'Object ID'
             if pd.isna(object_id):
                 continue
+
+            # Skip if category is 'Überschrift' or 'Information'
+            if not pd.isna(category):
+                category = str(category).rstrip(',').strip()
+                if category in ['Überschrift', 'Information']:
+                    continue
 
             # Check if the 'Object ID' exists in the compare file
             if object_id in compare_dict:
