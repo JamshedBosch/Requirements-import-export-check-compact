@@ -110,7 +110,7 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
 - **Finding Trigger**: Invalid status for headers or information
 
 ## ChecksSSP.py
-The `ProjectCheckerSSP` class implements checks for SSP (System and Software Platform) requirements.
+The `ProjectCheckerSSP` class implements checks for SSP (Scalable System Platform) requirements.
 
 ### Import Checks
 
