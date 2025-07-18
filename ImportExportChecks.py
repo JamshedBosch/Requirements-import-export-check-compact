@@ -100,22 +100,36 @@ class ChecksProcessor:
             # Import check AUDI ==> BOSCH
             if self.check_type == CheckConfiguration.IMPORT_CHECK:
                 findings = (
+                        # Check Nr.1
                         ProjectCheckerPPE.check_empty_object_id_with_forbidden_cr_status(
                             df, file_path) +
+
+                        # Check Nr.3
                         ProjectCheckerPPE.check_cr_status_bosch_ppx_conditions(
                             df, file_path) +
+
+                        # Check Nr.4
                         ProjectCheckerPPE.check_anlaufkonfiguration_empty(
                             df, file_path) +
-                        ProjectCheckerPPE.check_cr_id_empty_for_brs_hersteller_status(
-                            df, file_path) +
+
+                        # Check Nr.8
                         ProjectCheckerPPE.check_required_attributes_not_empty(
                             df, file_path)
                 )
                 if self.compare_df is not None:
+                    # Check Nr.5
+                    findings += ProjectCheckerPPE.compare_cr_id_and_brs_status_by_object_id(
+                        df, self.compare_df, file_path, self.compare_file)
 
+                    # Check Nr.6
                     findings += ProjectCheckerPPE.check_object_text_with_status_hersteller_bosch_ppx(
                         df, self.compare_df, file_path, self.compare_file)
 
+                    # Check Nr.9
+                    findings += ProjectCheckerPPE.check_new_requirements_without_cr_id(
+                        df, self.compare_df, file_path, self.compare_file)
+                   
+                    # Check Nr.7
                     # Execute check check_object_text_with_rb_as_status and create a separate report
                     rb_as_status_findings = ProjectCheckerPPE.check_object_text_with_rb_as_status(
                         df, self.compare_df, file_path, self.compare_file)
