@@ -454,7 +454,7 @@ class ProjectCheckerPPE:
             list of dict: Each dict describes a finding with row number, Object ID, and details.
         """
         findings = []
-        required_columns = ['Object ID', 'CR-ID_Bosch_PPx']
+        required_columns = ['Object ID', 'CR-ID_Bosch_PPx', 'Typ']
         missing_columns = [col for col in required_columns if col not in df.columns]
         missing_reference_columns = ['Object ID'] if 'Object ID' not in compare_df.columns else []
         if missing_columns:
@@ -470,6 +470,7 @@ class ProjectCheckerPPE:
         for index, row in df.iterrows():
             object_id = row['Object ID']
             cr_id = row['CR-ID_Bosch_PPx']
+            typ = row['Typ'] if 'Typ' in row else ''
             # Check if Object ID is not in Bosch and CR-ID_Bosch_PPx is empty
             if pd.isna(object_id):
                 continue
@@ -480,6 +481,7 @@ class ProjectCheckerPPE:
                     'Issue': ("New requirement (Object ID) found in Customer document that does not exist in Bosch document, but CR-ID_Bosch_PPx is missing. All new requirements should have a CR-ID assigned."),
                     'Value': (
                         f"Object ID: {object_id}\n"
+                        f"Typ: {'Empty' if pd.isna(typ) or typ == '' else typ}\n"
                         f"---------------\n"
                         f"       Customer File Name: {os.path.basename(file_path)}\n"
                         f"       Customer CR-ID_Bosch_PPx: {'Empty' if pd.isna(cr_id) or cr_id == '' else cr_id}\n"
