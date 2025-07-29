@@ -478,7 +478,7 @@ class ProjectCheckerPPE:
                 findings.append({
                     'Row': index + 2,
                     'Attribute': 'Object ID, CR-ID_Bosch_PPx',
-                    'Issue': ("New requirement (Object ID) found in Customer document that does not exist in Bosch document, but CR-ID_Bosch_PPx is missing. All new requirements should have a CR-ID assigned."),
+                    'Issue': ("New requirement (Object ID) found in Customer document that does not exist in Bosch document, and CR-ID_Bosch_PPx is missing. Hint: All new requirements should have a CR-ID assigned."),
                     'Value': (
                         f"Object ID: {object_id}\n"
                         f"Typ: {'Empty' if pd.isna(typ) or typ == '' else typ}\n"
@@ -488,6 +488,46 @@ class ProjectCheckerPPE:
                         f"---------------\n"
                         f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
                         f"       Bosch Object ID: Not found"
+                    )
+                })
+        return findings
+
+    # Check Nr.10
+    @staticmethod
+    def check_cr_status_bosch_ppx_015_and_brs_status_not_abgestimmt(df, file_path):
+        """
+        Checks if 'CR-Status_Bosch_PPx' is '015' and 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'.
+        Handles trailing commas in both fields.
+        Returns findings as a list of dictionaries.
+        """
+        findings = []
+        required_columns = ['CR-Status_Bosch_PPx', 'BRS-1Box_Status_Hersteller_Bosch_PPx', 'Object ID', 'Typ']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            check_name = __class__.check_cr_status_bosch_ppx_015_and_brs_status_not_abgestimmt.__name__
+            print(f"Warning: Missing columns in the DataFrame: {missing_columns}, in File: {file_path}. Skipping check: {check_name}\n\n")
+            return findings
+
+        for index, row in df.iterrows():
+            status_bosch_ppx = row['CR-Status_Bosch_PPx']
+            brs_status = row['BRS-1Box_Status_Hersteller_Bosch_PPx']
+            object_id = row['Object ID'] if 'Object ID' in row else ''
+            typ = row['Typ'] if 'Typ' in row else ''
+            # Normalize by stripping trailing commas and whitespace
+            status_bosch_ppx_norm = str(status_bosch_ppx).strip().rstrip(',') if not pd.isna(status_bosch_ppx) else ''
+            brs_status_norm = str(brs_status).strip().rstrip(',') if not pd.isna(brs_status) else ''
+            if status_bosch_ppx_norm == '015' and brs_status_norm != 'abgestimmt':
+                findings.append({
+                    'Row': index + 2,  # Excel row numbering
+                    'Attribute': 'CR-Status_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
+                    'Issue': ("'CR-Status_Bosch_PPx' is '015' but 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'."),
+                    'Value': (
+                        f"Object ID: {object_id if not pd.isna(object_id) and object_id != '' else 'Empty'}\n"
+                        f"Typ: {typ if not pd.isna(typ) and typ != '' else 'Empty'}\n"
+                        f"---------------\n"
+                        f"       File Name: {os.path.basename(file_path)}\n"
+                        f"       CR-Status_Bosch_PPx: {status_bosch_ppx_norm}\n"
+                        f"       BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status_norm}"
                     )
                 })
         return findings

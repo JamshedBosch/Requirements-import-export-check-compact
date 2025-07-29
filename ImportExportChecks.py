@@ -114,6 +114,10 @@ class ChecksProcessor:
 
                         # Check Nr.8
                         ProjectCheckerPPE.check_required_attributes_not_empty(
+                            df, file_path) +
+
+                        # Check Nr.10
+                        ProjectCheckerPPE.check_cr_status_bosch_ppx_015_and_brs_status_not_abgestimmt(
                             df, file_path)
                 )
                 if self.compare_df is not None:

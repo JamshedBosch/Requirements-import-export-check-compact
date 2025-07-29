@@ -109,6 +109,26 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
   - 'BRS-1Box_Status_Zulieferer_Bosch_PPx' must be 'n/a'
 - **Finding Trigger**: Invalid status for headers or information
 
+#### 10. Status Bosch PPx 015 with BRS Status Not Abgestimmt
+**Method**: `check_status_bosch_ppx_015_and_brs_status_not_abgestimmt`
+- **Purpose**: Ensures that when 'Status_Bosch_PPx' is '015', the 'BRS-1Box_Status_Hersteller_Bosch_PPx' is set to 'abgestimmt'.
+- **Conditions**:
+  - 'Status_Bosch_PPx' is '015' (trailing commas and whitespace are ignored)
+  - 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt' (trailing commas and whitespace are ignored)
+- **Finding Trigger**: Any row where 'Status_Bosch_PPx' is '015' and 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'.
+- **Report Format**:
+  ```
+  Object ID: [object_id]
+  Typ: [typ]
+  ---------------
+         File Name: [filename]
+         Status_Bosch_PPx: [normalized_status_bosch_ppx]
+         BRS-1Box_Status_Hersteller_Bosch_PPx: [normalized_brs_status]
+  ```
+  - Object ID and Typ are included for traceability
+  - All values are normalized (trailing commas/whitespace removed)
+  - Clearly sections the information for easy review
+
 ## ChecksSSP.py
 The `ProjectCheckerSSP` class implements checks for SSP (Scalable System Platform) requirements.
 
