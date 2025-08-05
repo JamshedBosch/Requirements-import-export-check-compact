@@ -496,16 +496,17 @@ class ProjectCheckerPPE:
     @staticmethod
     def check_cr_status_bosch_ppx_015_and_brs_status_not_abgestimmt(df, file_path):
         """
-        Checks if 'CR-Status_Bosch_PPx' is '015' and 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'.
-        Handles trailing commas in both fields.
+        Checks if 'CR-Status_Bosch_PPx' is '015' or '15' and 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'.
+        Handles both string and integer values for CR-Status_Bosch_PPx.
         Returns findings as a list of dictionaries.
         """
+        logger.info(f"Starting Check Nr.10 for file: {os.path.basename(file_path)}")
         findings = []
         required_columns = ['CR-Status_Bosch_PPx', 'BRS-1Box_Status_Hersteller_Bosch_PPx', 'Object ID', 'Typ']
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             check_name = __class__.check_cr_status_bosch_ppx_015_and_brs_status_not_abgestimmt.__name__
-            print(f"Warning: Missing columns in the DataFrame: {missing_columns}, in File: {file_path}. Skipping check: {check_name}\n\n")
+            logger.warning(f"Check Nr.10: Missing columns in the DataFrame: {missing_columns}, in File: {file_path}. Skipping check: {check_name}")
             return findings
 
         for index, row in df.iterrows():
@@ -516,11 +517,11 @@ class ProjectCheckerPPE:
             # Normalize by stripping trailing commas and whitespace
             status_bosch_ppx_norm = str(status_bosch_ppx).strip().rstrip(',') if not pd.isna(status_bosch_ppx) else ''
             brs_status_norm = str(brs_status).strip().rstrip(',') if not pd.isna(brs_status) else ''
-            if status_bosch_ppx_norm == '015' and brs_status_norm != 'abgestimmt':
+            if (status_bosch_ppx_norm == '015' or status_bosch_ppx_norm == '15') and brs_status_norm != 'abgestimmt':
                 findings.append({
                     'Row': index + 2,  # Excel row numbering
                     'Attribute': 'CR-Status_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
-                    'Issue': ("'CR-Status_Bosch_PPx' is '015' but 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'."),
+                    'Issue': ("'CR-Status_Bosch_PPx' is '015' or '15' but 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'."),
                     'Value': (
                         f"Object ID: {object_id if not pd.isna(object_id) and object_id != '' else 'Empty'}\n"
                         f"Typ: {typ if not pd.isna(typ) and typ != '' else 'Empty'}\n"
@@ -530,6 +531,7 @@ class ProjectCheckerPPE:
                         f"       BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status_norm}"
                     )
                 })
+        logger.info(f"Completed Check Nr.10. Found {len(findings)} issues.")
         return findings
 
     
