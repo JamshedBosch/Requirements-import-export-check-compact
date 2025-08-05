@@ -56,8 +56,7 @@ class ProjectCheckerPPE:
                            col not in df.columns]
         if missing_columns:
             check_name = __class__.check_cr_status_bosch_ppx_conditions.__name__
-            print(
-                f"Warning: Missing columns in the DataFrame: {missing_columns}, "
+            logger.warning(f"Warning: Missing columns in the DataFrame: {missing_columns}, "
                 f"in File: {file_path}.\nSkipping check: {check_name}")
             return findings
 
@@ -105,8 +104,7 @@ class ProjectCheckerPPE:
                            col not in df.columns]
         if missing_columns:
             check_name = __class__.check_anlaufkonfiguration_empty.__name__
-            print(
-                f"Warning: Missing columns in the DataFrame: {missing_columns}, "
+            logger.warning(f"Warning: Missing columns in the DataFrame: {missing_columns}, "
                 f"in File: {file_path}.\nSkipping check: {check_name}")
             return findings
 
@@ -159,11 +157,11 @@ class ProjectCheckerPPE:
         missing_reference_columns = [col for col in required_columns if col not in compare_df.columns]
         if missing_columns:
             check_name = __class__.compare_cr_id_and_brs_status_by_object_id.__name__
-            print(f"Warning: Missing columns in the DataFrame: {missing_columns}, in File: {file_path}. Skipping check: {check_name}\n\n")
+            logger.warning(f"Warning: Missing columns in the DataFrame: {missing_columns}, in File: {file_path}. Skipping check: {check_name}\n\n")
             return findings
         if missing_reference_columns:
             check_name = __class__.compare_cr_id_and_brs_status_by_object_id.__name__
-            print(f"Warning: Missing columns in the reference file: {missing_reference_columns}, in File: {compare_file_path}. Skipping check: {check_name}\n\n")
+            logger.warning(f"Warning: Missing columns in the reference file: {missing_reference_columns}, in File: {compare_file_path}. Skipping check: {check_name}\n\n")
             return findings
 
         for index, row in df.iterrows():
@@ -229,15 +227,13 @@ class ProjectCheckerPPE:
 
         if missing_columns:
             check_name = __class__.check_object_text_with_status_hersteller_bosch_ppx.__name__
-            print(
-                f"Warning: Missing columns in the DataFrame: {missing_columns}, "
+            logger.warning(f"Warning: Missing columns in the DataFrame: {missing_columns}, "
                 f"in File: {file_path}.\nSkipping check: {check_name}\n\n")
             return findings
 
         if missing_compare_columns:
             check_name = __class__.check_object_text_with_status_hersteller_bosch_ppx.__name__
-            print(
-                f"Warning: Missing columns in the compare file: {missing_compare_columns}.\nSkipping check: {check_name}\n\n")
+            logger.warning(f"Warning: Missing columns in the compare file: {missing_compare_columns}.\nSkipping check: {check_name}\n\n")
             return findings
 
         # Create a dictionary for quick lookup of 'Object Text' from compare file
@@ -304,15 +300,13 @@ class ProjectCheckerPPE:
 
         if missing_columns:
             check_name = __class__.check_object_text_with_rb_as_status.__name__
-            print(
-                f"Warning: Missing columns in the DataFrame: {missing_columns}, "
+            logger.warning(f"Warning: Missing columns in the DataFrame: {missing_columns}, "
                 f"in File: {file_path}.\nSkipping check: {check_name}\n\n")
             return findings
 
         if missing_compare_columns:
             check_name = __class__.check_object_text_with_rb_as_status.__name__
-            print(
-                f"Warning: Missing columns in the compare file: {missing_compare_columns}.\nSkipping check: {check_name}\n\n")
+            logger.warning(f"Warning: Missing columns in the compare file: {missing_compare_columns}.\nSkipping check: {check_name}\n\n")
             return findings
 
         # Create a dictionary for quick lookup of 'Object Text' from main file(gernerated from reqif)
@@ -327,8 +321,7 @@ class ProjectCheckerPPE:
             rb_as_status = row.get('RB_AS_Status', None)
             # Debugging
             if rb_as_status is None:
-                print(
-                    f"Warning: 'RB_AS_Status' is None for Object ID: {object_id}")
+                logger.debug(f"Warning: 'RB_AS_Status' is None for Object ID: {object_id}")
 
                 # Skip rows with missing 'Object ID'
             if pd.isna(object_id):
@@ -346,7 +339,7 @@ class ProjectCheckerPPE:
 
                 # If 'Object Text' differs, check 'RB_AS_Status'
                 if normalized_object_text != normalized_compare_text:
-                    print(f"rb_as_status: {rb_as_status}")
+                    logger.debug(f"rb_as_status: {rb_as_status}")
                     if rb_as_status in ['accepted', 'no_req',
                                         'canceled_closed']:
                         findings.append({
@@ -459,11 +452,11 @@ class ProjectCheckerPPE:
         missing_reference_columns = ['Object ID'] if 'Object ID' not in compare_df.columns else []
         if missing_columns:
             check_name = __class__.check_new_requirements_without_cr_id.__name__
-            print(f"Warning: Missing columns in the DataFrame: {missing_columns}, in File: {file_path}. Skipping check: {check_name}\n\n")
+            logger.warning(f"Warning: Missing columns in the DataFrame: {missing_columns}, in File: {file_path}. Skipping check: {check_name}\n\n")
             return findings
         if missing_reference_columns:
             check_name = __class__.check_new_requirements_without_cr_id.__name__
-            print(f"Warning: Missing columns in the reference file: {missing_reference_columns}, in File: {compare_file_path}. Skipping check: {check_name}\n\n")
+            logger.warning(f"Warning: Missing columns in the reference file: {missing_reference_columns}, in File: {compare_file_path}. Skipping check: {check_name}\n\n")
             return findings
 
         bosch_object_ids = set(compare_df['Object ID'])
@@ -554,8 +547,7 @@ class ProjectCheckerPPE:
         missing_columns = [col for col in required_columns if
                            col not in df.columns]
         if missing_columns:
-            print(
-                f"Warning: Missing columns in the DataFrame: {missing_columns},"
+            logger.warning(f"Warning: Missing columns in the DataFrame: {missing_columns},"
                 f" in File: {file_path}")
             return findings
 
@@ -588,8 +580,7 @@ class ProjectCheckerPPE:
                            col not in df.columns]
 
         if missing_columns:
-            print(
-                f"Warning: Missing columns in the DataFrame: {missing_columns},"
+            logger.warning(f"Warning: Missing columns in the DataFrame: {missing_columns},"
                 f" in File: {file_path}")
             return findings
 
