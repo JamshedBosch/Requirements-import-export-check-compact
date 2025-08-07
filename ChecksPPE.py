@@ -149,10 +149,11 @@ class ProjectCheckerPPE:
         - Finds all rows in the reference file with the same 'Object ID'.
         - Normalizes and compares 'CR-ID_Bosch_PPx' and 'BRS-1Box_Status_Hersteller_Bosch_PPx' between the two files.
         - If any difference is found, a finding is reported.
+        - 'CR-Status_Bosch_PPx' is shown in the report for context but is not compared.
         Allows multiple empty cells and non-unique Object IDs in the reference file.
         """
         findings = []
-        required_columns = ['Object ID', 'CR-ID_Bosch_PPx', 'BRS-1Box_Status_Hersteller_Bosch_PPx', 'Typ']
+        required_columns = ['Object ID', 'CR-ID_Bosch_PPx', 'BRS-1Box_Status_Hersteller_Bosch_PPx', 'CR-Status_Bosch_PPx', 'Typ']
         missing_columns = [col for col in required_columns if col not in df.columns]
         missing_reference_columns = [col for col in required_columns if col not in compare_df.columns]
         if missing_columns:
@@ -176,21 +177,27 @@ class ProjectCheckerPPE:
             for _, ref_row in ref_matches.iterrows():
                 cr_id = row['CR-ID_Bosch_PPx']
                 brs_status = row['BRS-1Box_Status_Hersteller_Bosch_PPx']
+                cr_status = row['CR-Status_Bosch_PPx']
                 ref_cr_id = ref_row['CR-ID_Bosch_PPx']
                 ref_brs_status = ref_row['BRS-1Box_Status_Hersteller_Bosch_PPx']
+                ref_cr_status = ref_row['CR-Status_Bosch_PPx']
                 # Convert NaN to 'Empty' for reporting
                 cr_id_str = 'Empty' if pd.isna(cr_id) or cr_id == '' else cr_id
                 brs_status_str = 'Empty' if pd.isna(brs_status) or brs_status == '' else brs_status
+                cr_status_str = 'Empty' if pd.isna(cr_status) or cr_status == '' else cr_status
                 ref_cr_id_str = 'Empty' if pd.isna(ref_cr_id) or ref_cr_id == '' else ref_cr_id
                 ref_brs_status_str = 'Empty' if pd.isna(ref_brs_status) or ref_brs_status == '' else ref_brs_status
+                ref_cr_status_str = 'Empty' if pd.isna(ref_cr_status) or ref_cr_status == '' else ref_cr_status
                 norm_cr_id = HelperFunctions.normalize_text(cr_id)
                 norm_ref_cr_id = HelperFunctions.normalize_text(ref_cr_id)
                 norm_brs_status = str(brs_status).rstrip(',') if not pd.isna(brs_status) else ''
                 norm_ref_brs_status = str(ref_brs_status).rstrip(',') if not pd.isna(ref_brs_status) else ''
+                norm_cr_status = str(cr_status).rstrip(',') if not pd.isna(cr_status) else ''
+                norm_ref_cr_status = str(ref_cr_status).rstrip(',') if not pd.isna(ref_cr_status) else ''
                 if norm_cr_id != norm_ref_cr_id or norm_brs_status != norm_ref_brs_status:
                     findings.append({
                         'Row': index + 2,
-                        'Attribute': 'CR-ID_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
+                        'Attribute': 'CR-ID_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx, CR-Status_Bosch_PPx',
                         'Issue': ("'CR-ID_Bosch_PPx' or 'BRS-1Box_Status_Hersteller_Bosch_PPx' differs from Bosch file."),
                         'Value': (
                             f"Object ID: {object_id}\n"
@@ -198,10 +205,12 @@ class ProjectCheckerPPE:
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Customer CR-ID_Bosch_PPx: {cr_id_str}\n"
                             f"       Customer BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status_str}\n"
+                            f"       Customer CR-Status_Bosch_PPx: {cr_status_str}\n"
                             f"---------------\n"
                             f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
                             f"       Bosch CR-ID_Bosch_PPx: {ref_cr_id_str}\n"
-                            f"       Bosch BRS-1Box_Status_Hersteller_Bosch_PPx: {ref_brs_status_str}"
+                            f"       Bosch BRS-1Box_Status_Hersteller_Bosch_PPx: {ref_brs_status_str}\n"
+                            f"       Bosch CR-Status_Bosch_PPx: {ref_cr_status_str}"
                         )
                     })
         return findings
