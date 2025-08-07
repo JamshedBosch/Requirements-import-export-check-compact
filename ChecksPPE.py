@@ -523,7 +523,7 @@ class ProjectCheckerPPE:
                 findings.append({
                     'Row': index + 2,  # Excel row numbering
                     'Attribute': 'CR-Status_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
-                    'Issue': ("'CR-Status_Bosch_PPx' is '015' or '15' but 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'."),
+                    'Issue': ("'CR-Status_Bosch_PPx' is '15' but 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'."),
                     'Value': (
                         f"Object ID: {object_id if not pd.isna(object_id) and object_id != '' else 'Empty'}\n"
                         f"Typ: {typ if not pd.isna(typ) and typ != '' else 'Empty'}\n"
