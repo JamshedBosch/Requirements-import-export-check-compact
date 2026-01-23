@@ -3,7 +3,8 @@ import pandas as pd
 import shutil
 from ReportGenerator import ReportGenerator
 from ChecksPPE import ProjectCheckerPPE
-from ChecksSSP import  ProjectCheckerSSP
+from ChecksSSP import ProjectCheckerSSP
+from ChecksSDV01 import ProjectCheckerSDV01
 import sys
 from utils import get_exe_directory
 
@@ -15,7 +16,8 @@ class CheckConfiguration:
 
     PROJECT = {
         "PPE_MLBW": "PPE/MLBW",
-        "SSP": "SSP"
+        "SSP": "SSP",
+        "SDV01": "SDV01",
     }
 
     @staticmethod
@@ -178,6 +180,16 @@ class ChecksProcessor:
             else:
                 # Export check BOSCH ==> AUDI
                 print("[SSP] NO EXPORT CHECKS DEFINED SOFAR")
+        elif self.project == CheckConfiguration.PROJECT["SDV01"]:
+            # SDV01 uses its own checker class; currently only placeholder entry points.
+            if self.check_type == CheckConfiguration.IMPORT_CHECK:
+                findings = ProjectCheckerSDV01.import_checks(
+                    df, file_path, self.compare_df, self.compare_file
+                )
+            else:
+                findings = ProjectCheckerSDV01.export_checks(
+                    df, file_path, self.compare_df, self.compare_file
+                )
 
         # Generate report
         return ReportGenerator.generate_report(file_path, self.report_folder, self.report_type,

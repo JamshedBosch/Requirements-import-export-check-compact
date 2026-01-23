@@ -126,9 +126,14 @@ class ImportExportGui:
 
             # Create a dropdown list for project selection
             self.project_var = tk.StringVar(value="PPE/MLBW")
-            self.project_dropdown = ttk.Combobox(self.project_frame, textvariable=self.project_var,
-                                                 postcommand=self.print_status,
-                                                 values=["PPE/MLBW", "SSP"], state="readonly", style='TCombobox')
+            self.project_dropdown = ttk.Combobox(
+                self.project_frame,
+                textvariable=self.project_var,
+                postcommand=self.print_status,
+                values=["PPE/MLBW", "SSP", "SDV01"],
+                state="readonly",
+                style='TCombobox'
+            )
             self.project_dropdown.grid(row=0, column=1, padx=10, sticky="w")
             print(f"project selected is: {self.project_var.get()}")
 
