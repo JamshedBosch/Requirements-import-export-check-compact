@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import shutil
+from datetime import datetime
 from ReportGenerator import ReportGenerator
 from ChecksPPE import ProjectCheckerPPE
 from ChecksSSP import ProjectCheckerSSP
@@ -74,8 +75,18 @@ class ChecksProcessor:
 
     def process_folder(self):
         """Process all Excel files in the specified folder."""
-        # Delete existing report folder
-        self._delete_folder(self.report_folder)
+        # Create a project-specific, timestamped report folder so that
+        # previous reports are preserved and not overwritten.
+        project_name_fs = (
+            str(self.project)
+            .replace(os.sep, "_")
+            .replace("/", "_")
+            .replace(" ", "_")
+        )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.report_folder = os.path.join(
+            CheckConfiguration.REPORT_FOLDER, project_name_fs, timestamp
+        )
         os.makedirs(self.report_folder, exist_ok=True)
 
         reports = []
