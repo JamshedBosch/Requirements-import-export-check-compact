@@ -265,13 +265,13 @@ class ProjectCheckerSDV01:
                 ref_cr_status = ref_row['CR-Status_Bosch_SDV0.1']
 
                 # Convert NaN to 'Empty' for reporting
-                cr_id_str = 'Empty' if pd.isna(cr_id) or cr_id == '' else cr_id
-                brs_status_str = 'Empty' if pd.isna(brs_status) or brs_status == '' else brs_status
-                cr_status_str = 'Empty' if pd.isna(cr_status) or cr_status == '' else cr_status
+                cr_id_str = 'Empty' if pd.isna(cr_id) or str(cr_id).strip() == '' else cr_id
+                brs_status_str = 'Empty' if pd.isna(brs_status) or str(brs_status).strip() == '' else brs_status
+                cr_status_str = 'Empty' if pd.isna(cr_status) or str(cr_status).strip() == '' else cr_status
 
-                ref_cr_id_str = 'Empty' if pd.isna(ref_cr_id) or ref_cr_id == '' else ref_cr_id
-                ref_brs_status_str = 'Empty' if pd.isna(ref_brs_status) or ref_brs_status == '' else ref_brs_status
-                ref_cr_status_str = 'Empty' if pd.isna(ref_cr_status) or ref_cr_status == '' else ref_cr_status
+                ref_cr_id_str = 'Empty' if pd.isna(ref_cr_id) or str(ref_cr_id).strip() == '' else ref_cr_id
+                ref_brs_status_str = 'Empty' if pd.isna(ref_brs_status) or str(ref_brs_status).strip() == '' else ref_brs_status
+                ref_cr_status_str = 'Empty' if pd.isna(ref_cr_status) or str(ref_cr_status).strip() == '' else ref_cr_status
 
                 # Normalize values for comparison
                 norm_cr_id = HelperFunctions.normalize_text(cr_id)
@@ -615,15 +615,182 @@ class ProjectCheckerSDV01:
                     ),
                     'Value': (
                         f"Object ID: {object_id}\n"
-                        f"Typ: {'Empty' if pd.isna(typ) or typ == '' else typ}\n"
+                        f"Typ: {'Empty' if pd.isna(typ) or str(typ).strip() == '' else typ}\n"
                         f"---------------\n"
                         f"       Customer File Name: {os.path.basename(file_path)}\n"
-                        f"       Customer CR-ID_Bosch_SDV0.1: {'Empty' if pd.isna(cr_id) or cr_id == '' else cr_id}\n"
+                        f"       Customer CR-ID_Bosch_SDV0.1: {'Empty' if pd.isna(cr_id) or str(cr_id).strip() == '' else cr_id}\n"
                         f"---------------\n"
                         f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
                         f"       Bosch Object ID: Not found"
                     )
                 })
+
+        return findings
+
+    # Check Nr.9
+    @staticmethod
+    def check_cr_id_must_not_be_empty(df: pd.DataFrame, file_path: str) -> list[dict]:
+        """
+        Check Nr.9: Ensures CR-ID_Bosch_SDV0.1 is not empty.
+
+        Reports a finding when:
+        - CR-ID_Bosch_SDV0.1 is empty, OR
+        - BRS_Status_Hersteller_Bosch_SDV0.1 = 'verworfen' AND CR-ID_Bosch_SDV0.1 is empty
+
+        Erklärung:
+        CR-ID_Bosch_SDV0.1 darf nicht leer sein.
+        Wenn der Kunde eine Anforderung verwirft, darf dieser nicht ohne einen neuen CR erfolgen
+        (eine verworfene Anforderung muss mit einem CR bei Bosch kommen).
+        """
+        findings: list[dict] = []
+        required_columns = ['CR-ID_Bosch_SDV0.1', 'BRS_Status_Hersteller_Bosch_SDV0.1']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+
+        if missing_columns:
+            check_name = __class__.check_cr_id_must_not_be_empty.__name__
+            logger.warning(
+                f"Warning: Missing columns in the DataFrame: {missing_columns}, "
+                f"in File: {file_path}.\nSkipping check: {check_name}"
+            )
+            return findings
+
+        for index, row in df.iterrows():
+            cr_id = row['CR-ID_Bosch_SDV0.1']
+            brs_status_raw = row['BRS_Status_Hersteller_Bosch_SDV0.1']
+
+            # Normalize BRS status
+            if pd.isna(brs_status_raw) or str(brs_status_raw).strip() == "":
+                brs_status_norm = "Empty"
+            else:
+                brs_status_norm = str(brs_status_raw).strip().rstrip(',')
+
+            # Check if CR-ID is empty
+            cr_id_empty = pd.isna(cr_id) or str(cr_id).strip() == ""
+
+            if cr_id_empty:
+                # Determine issue message based on status
+                if brs_status_norm == "verworfen":
+                    issue_msg = (
+                        "CR-ID_Bosch_SDV0.1 is empty and BRS_Status_Hersteller_Bosch_SDV0.1 is 'verworfen'. "
+                        "A rejected requirement must come with a CR-ID at Bosch."
+                    )
+                else:
+                    issue_msg = "CR-ID_Bosch_SDV0.1 must not be empty."
+
+                findings.append({
+                    'Row': index + 2,
+                    'Attribute': 'CR-ID_Bosch_SDV0.1, BRS_Status_Hersteller_Bosch_SDV0.1',
+                    'Issue': issue_msg,
+                    'Value': (
+                        f"CR-ID_Bosch_SDV0.1: Empty\n"
+                        f"BRS_Status_Hersteller_Bosch_SDV0.1: {brs_status_norm}"
+                    )
+                })
+
+        return findings
+
+    # Check Nr.10
+    @staticmethod
+    def check_cr_status_overwrite_protection(df: pd.DataFrame,
+                                             compare_df: pd.DataFrame,
+                                             file_path: str,
+                                             compare_file_path: str) -> list[dict]:
+        """
+        Check Nr.10: Prevents overwriting Bosch CR-Status when it is 100 or 31.
+
+        Compares 'CR-Status_Bosch_SDV0.1' between customer and Bosch files (matched by Object ID).
+        Reports a finding when:
+        - Bosch file has 'CR-Status_Bosch_SDV0.1' = '100' or '31' (with or without trailing comma), and
+        - Customer file has a different 'CR-Status_Bosch_SDV0.1' value
+
+        Erklärung:
+        Wenn der CR-ID vorhanden ist, und bei Bosch CR-Status 31 oder 100 ist,
+        dann darf der CR-Status nicht mit neuem CR-Status überschrieben werden.
+        """
+        findings: list[dict] = []
+        required_columns = ['Object ID', 'CR-Status_Bosch_SDV0.1', 'CR-ID_Bosch_SDV0.1']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        missing_reference_columns = ['Object ID', 'CR-Status_Bosch_SDV0.1']
+        missing_reference_columns = [col for col in missing_reference_columns if col not in compare_df.columns]
+
+        if missing_columns:
+            check_name = __class__.check_cr_status_overwrite_protection.__name__
+            logger.warning(
+                f"Warning: Missing columns in the customer DataFrame: {missing_columns}, "
+                f"in File: {file_path}. Skipping check: {check_name}\n\n"
+            )
+            return findings
+
+        if missing_reference_columns:
+            check_name = __class__.check_cr_status_overwrite_protection.__name__
+            logger.warning(
+                f"Warning: Missing columns in the reference file: {missing_reference_columns}, "
+                f"in File: {compare_file_path}. Skipping check: {check_name}\n\n"
+            )
+            return findings
+
+        for index, row in df.iterrows():
+            object_id = row['Object ID']
+            cr_id = row['CR-ID_Bosch_SDV0.1']
+            customer_cr_status = row['CR-Status_Bosch_SDV0.1']
+
+            # Skip if Object ID is empty
+            if pd.isna(object_id):
+                continue
+
+            # Only check if CR-ID is present (as per explanation)
+            if pd.isna(cr_id) or str(cr_id).strip() == "":
+                continue
+
+            # Find all rows in compare_df with the same Object ID
+            ref_matches = compare_df[compare_df['Object ID'] == object_id]
+            if ref_matches.empty:
+                continue  # No reference to compare
+
+            for _, ref_row in ref_matches.iterrows():
+                bosch_cr_status = ref_row['CR-Status_Bosch_SDV0.1']
+
+                # Normalize Bosch CR-Status (strip trailing comma and whitespace)
+                if pd.isna(bosch_cr_status) or str(bosch_cr_status).strip() == "":
+                    bosch_cr_status_norm = ""
+                else:
+                    bosch_cr_status_norm = str(bosch_cr_status).strip().rstrip(',')
+
+                # Check if Bosch status is 100 or 31
+                if bosch_cr_status_norm not in ['100', '31']:
+                    continue  # Not a protected status, skip
+
+                # Normalize customer CR-Status for comparison
+                if pd.isna(customer_cr_status) or str(customer_cr_status).strip() == "":
+                    customer_cr_status_norm = ""
+                else:
+                    customer_cr_status_norm = str(customer_cr_status).strip().rstrip(',')
+
+                # If customer status differs from Bosch status, report finding
+                if customer_cr_status_norm != bosch_cr_status_norm:
+                    customer_cr_status_str = 'Empty' if pd.isna(customer_cr_status) or str(customer_cr_status).strip() == '' else customer_cr_status
+                    bosch_cr_status_str = 'Empty' if pd.isna(bosch_cr_status) or str(bosch_cr_status).strip() == '' else bosch_cr_status
+
+                    findings.append({
+                        'Row': index + 2,
+                        'Attribute': 'CR-Status_Bosch_SDV0.1',
+                        'Issue': (
+                            "'CR-Status_Bosch_SDV0.1' differs from Bosch file. "
+                            "Bosch CR-Status is '100' or '31' and should not be overwritten."
+                        ),
+                        'Value': (
+                            f"Object ID: {object_id}\n"
+                            f"CR-ID_Bosch_SDV0.1: {cr_id}\n"
+                            f"---------------\n"
+                            f"       Customer File Name: {os.path.basename(file_path)}\n"
+                            f"       Customer CR-Status_Bosch_SDV0.1: {customer_cr_status_str}\n"
+                            f"---------------\n"
+                            f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
+                            f"       Bosch CR-Status_Bosch_SDV0.1: {bosch_cr_status_str}\n"
+                            f"---------------\n"
+                            f"       Note: Bosch CR-Status '100' or '31' must not be overwritten."
+                        )
+                    })
 
         return findings
 
@@ -664,6 +831,11 @@ class ProjectCheckerSDV01:
                 df, compare_df, file_path, compare_file_path
             )
 
+            # Check Nr.10 – requires reference file
+            findings += ProjectCheckerSDV01.check_cr_status_overwrite_protection(
+                df, compare_df, file_path, compare_file_path
+            )
+
         # Check Nr.7 – does not require reference file
         findings += ProjectCheckerSDV01.check_required_attributes_not_empty(df, file_path)
 
@@ -672,6 +844,9 @@ class ProjectCheckerSDV01:
             findings += ProjectCheckerSDV01.check_new_requirements_without_cr_id(
                 df, compare_df, file_path, compare_file_path
             )
+
+        # Check Nr.9 – does not require reference file
+        findings += ProjectCheckerSDV01.check_cr_id_must_not_be_empty(df, file_path)
 
         return findings
 
