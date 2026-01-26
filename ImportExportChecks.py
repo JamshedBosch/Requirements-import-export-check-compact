@@ -192,7 +192,7 @@ class ChecksProcessor:
                 # Export check BOSCH ==> AUDI
                 print("[SSP] NO EXPORT CHECKS DEFINED SOFAR")
         elif self.project == CheckConfiguration.PROJECT["SDV01"]:
-            # SDV01 uses its own checker class; currently only placeholder entry points.
+            # SDV01 uses its own checker class;
             if self.check_type == CheckConfiguration.IMPORT_CHECK:
                 findings = ProjectCheckerSDV01.import_checks(
                     df, file_path, self.compare_df, self.compare_file
