@@ -56,7 +56,7 @@ def show_quick_start_guide():
             <div class="step">
                 <h2>Basic Steps</h2>
                 <ol>
-                    <li>Select your project type (PPE/MLBW or SSP)</li>
+                    <li>Select your project type (PPE/MLBW, SSP, SDV01)</li>
                     <li>Choose check type (Import or Export)</li>
                     <li>Select ReqIF folder containing your files</li>
                     <li>Optional: Enable "Select compare file" checkbox and select a reference file</li>
