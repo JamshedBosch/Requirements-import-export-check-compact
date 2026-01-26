@@ -30,12 +30,21 @@ class ProjectCheckerPPE:
                 'CR-Status_Bosch_PPx'] in forbidden_status:
                 logger.debug(f"Found issue at row {index + 2}: Empty Object ID with forbidden status {row['CR-Status_Bosch_PPx']}")
                 object_id = "Empty"
+                typ_value = row.get('Typ', None)
+                typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                 findings.append({
                     'Row': index + 2,
-                    # Excel rows start at 1; +2 accounts for header row
+                    'Check Number': 'Nr.1',
+                    'Object ID': object_id,
                     'Attribute': 'Object ID, CR-Status_Bosch_PPx',
                     'Issue': "Empty 'Object ID' with forbidden 'CR-Status_Bosch_PPx' value",
-                    'Value': f"Object ID: {object_id}, CR-Status_Bosch_PPx: {row['CR-Status_Bosch_PPx']}"
+                    'Value': (
+                        f"Object ID: {object_id}\n"
+                        f"Typ: {typ_str}\n"
+                        f"\n"
+                        f"---------------\n"
+                        f"CR-Status_Bosch_PPx: {row['CR-Status_Bosch_PPx']}"
+                    )
                 })
         logger.info(f"Completed empty Object ID check. Found {len(findings)} issues.")
         return findings
@@ -71,15 +80,25 @@ class ProjectCheckerPPE:
             if (row['CR-Status_Bosch_PPx'] == "---" and
                     not pd.isna(row['CR-ID_Bosch_PPx']) and
                     brs_status != "verworfen"):
+                object_id = row.get('Object ID', None)
+                object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+                typ_value = row.get('Typ', None)
+                typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                 findings.append({
                     'Row': index + 2,
+                    'Check Number': 'Nr.2',
+                    'Object ID': object_id_str,
                     'Attribute': 'CR-Status_Bosch_PPx, CR-ID_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
                     'Issue': (
                         "'CR-Status_Bosch_PPx' is '---' where as 'CR-ID_Bosch_PPx' is not empty "
                         "and 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'verworfen'"),
                     'Value': (
-                        f"CR-Status_Bosch_PPx: {row['CR-Status_Bosch_PPx']}, "
-                        f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}, "
+                        f"Object ID: {object_id_str}\n"
+                        f"Typ: {typ_str}\n"
+                        f"\n"
+                        f"---------------\n"
+                        f"CR-Status_Bosch_PPx: {row['CR-Status_Bosch_PPx']}\n"
+                        f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}\n"
                         f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
                 })
         return findings
@@ -125,8 +144,12 @@ class ProjectCheckerPPE:
                 empty_columns = [col for col in required_columns[1:4] if
                                 pd.isna(row[col])]
                 if empty_columns:
+                    typ_value = row.get('Typ', None)
+                    typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.4',
+                        'Object ID': str(row['Object ID']),
                         'Attribute': ', '.join(empty_columns),
                         'Issue': (
                             f"{', '.join(empty_columns)} is empty where as 'Object ID' is not empty "
@@ -134,6 +157,9 @@ class ProjectCheckerPPE:
                         ),
                         'Value': (
                             f"Object ID: {row['Object ID']}\n"
+                            f"Typ: {typ_str}\n"
+                            f"\n"
+                            f"---------------\n"
                             f"Empty Attributes: {', '.join(empty_columns)}\n"
                             f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}"
                         )
@@ -195,12 +221,17 @@ class ProjectCheckerPPE:
                 norm_cr_status = str(cr_status).rstrip(',') if not pd.isna(cr_status) else ''
                 norm_ref_cr_status = str(ref_cr_status).rstrip(',') if not pd.isna(ref_cr_status) else ''
                 if norm_cr_id != norm_ref_cr_id or norm_brs_status != norm_ref_brs_status:
+                    typ_str = str(typ_value).rstrip(',')
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.5',
+                        'Object ID': str(object_id),
                         'Attribute': 'CR-ID_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx, CR-Status_Bosch_PPx',
                         'Issue': ("'CR-ID_Bosch_PPx' or 'BRS-1Box_Status_Hersteller_Bosch_PPx' differs from Bosch file."),
                         'Value': (
                             f"Object ID: {object_id}\n"
+                            f"Typ: {typ_str}\n"
+                            f"\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Customer CR-ID_Bosch_PPx: {cr_id_str}\n"
@@ -270,20 +301,27 @@ class ProjectCheckerPPE:
                     compare_text)
                 if normalized_object_text != normalized_compare_text:
                     if brs_status not in ['neu/geändert,']:
+                        typ_value = row.get('Typ', None)
+                        typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
+                        compare_text_display = 'Empty' if pd.isna(compare_text) or str(compare_text).strip() == '' else str(compare_text)
                         findings.append({
                             'Row': index + 2,  # Adjust for Excel row numbering
+                            'Check Number': 'Nr.6',
+                            'Object ID': str(object_id),
                             'Attribute': 'Object Text, BRS-1Box_Status_Hersteller_Bosch_PPx',
                             'Issue': (
                                 f"'Object Text' differs but 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'neu/geändert'."
                             ),
                             'Value': (
-                                f"Object ID: {object_id}\n\n"
+                                f"Object ID: {object_id}\n"
+                                f"Typ: {typ_str}\n"
+                                f"\n"
                                 f"---------------\n"
                                 f"       Customer File Name: {os.path.basename(file_path)}\n"
                                 f"       Customer File Object Text: {object_text}\n"
                                 f"---------------\n"
                                 f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
-                                f"       Bosch File Object Text: {compare_text}\n"
+                                f"       Bosch File Object Text: {compare_text_display}\n"
                                 f"---------------\n"
                                 f"       BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}"
                             )
@@ -351,8 +389,14 @@ class ProjectCheckerPPE:
                     logger.debug(f"rb_as_status: {rb_as_status}")
                     if rb_as_status in ['accepted', 'no_req',
                                         'canceled_closed']:
+                        typ_value = row.get('Typ', None)
+                        typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
+                        object_text_display = 'Empty' if pd.isna(object_text) or str(object_text).strip() == '' else str(object_text)
+                        compare_text_display = 'Empty' if pd.isna(compare_text) or str(compare_text).strip() == '' else str(compare_text)
                         findings.append({
                             'Row': index + 2,  # Adjust for Excel row numbering
+                            'Check Number': 'Nr.7',
+                            'Object ID': str(object_id),
                             'Attribute': 'Object Text, RB_AS_Status',
                             'Issue': (
                                 f"'Object Text' differs but 'RB_AS_Status' is one of the prohibited values "
@@ -360,12 +404,14 @@ class ProjectCheckerPPE:
                             ),
                             'Value': (
                                   f"Object ID: {object_id}\n"
+                                  f"Typ: {typ_str}\n"
+                                  f"\n"
                                   f"---------------\n"
-                                  f"       Bosch File Name: { os.path.basename(compare_file_path)}\n"
-                                  f"       Bosch File Object Text: {object_text}\n"
+                                  f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
+                                  f"       Bosch File Object Text: {object_text_display}\n"
                                   f"---------------\n"
                                   f"       Customer File Name: {os.path.basename(file_path)}\n"
-                                  f"       Customer File Object Text: {compare_text}\n"
+                                  f"       Customer File Object Text: {compare_text_display}\n"
                                   f"---------------\n"
                                   f"       RB_AS_Status: {rb_as_status}"
                             )
@@ -420,14 +466,23 @@ class ProjectCheckerPPE:
                 if empty_columns:
                     # Build details section
                     details = []
+                    object_id = row.get('Object ID', None)
+                    object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+                    typ_value = row.get('Typ', None)
+                    typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                     # Add Object ID first if available
-                    if 'Object ID' in df.columns and not pd.isna(row['Object ID']):
-                        details.append(f"Object ID: {row['Object ID']}")
+                    if 'Object ID' in df.columns:
+                        details.append(f"Object ID: {object_id_str}")
+                    details.append(f"Typ: {typ_str}")
+                    details.append("")
+                    details.append("---------------")
                     details.append(f"Empty Attributes: {', '.join(empty_columns)}")
                     details.append(f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
                     
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.8',
+                        'Object ID': object_id_str,
                         'Attribute': ', '.join(empty_columns),
                         'Issue': (
                             f"{', '.join(empty_columns)} {'is' if len(empty_columns) == 1 else 'are'} empty while "
@@ -477,13 +532,17 @@ class ProjectCheckerPPE:
             if pd.isna(object_id):
                 continue
             if object_id not in bosch_object_ids and (pd.isna(cr_id) or cr_id == ''):
+                typ_str = 'Empty' if pd.isna(typ) or str(typ).strip() == '' else str(typ).rstrip(',')
                 findings.append({
                     'Row': index + 2,
+                    'Check Number': 'Nr.9',
+                    'Object ID': str(object_id),
                     'Attribute': 'Object ID, CR-ID_Bosch_PPx',
                     'Issue': ("New requirement (Object ID) found in Customer document that does not exist in Bosch document, and CR-ID_Bosch_PPx is missing. Hint: All new requirements should have a CR-ID assigned."),
                     'Value': (
                         f"Object ID: {object_id}\n"
-                        f"Typ: {'Empty' if pd.isna(typ) or typ == '' else typ}\n"
+                        f"Typ: {typ_str}\n"
+                        f"\n"
                         f"---------------\n"
                         f"       Customer File Name: {os.path.basename(file_path)}\n"
                         f"       Customer CR-ID_Bosch_PPx: {'Empty' if pd.isna(cr_id) or cr_id == '' else cr_id}\n"
@@ -520,13 +579,18 @@ class ProjectCheckerPPE:
             status_bosch_ppx_norm = str(status_bosch_ppx).strip().rstrip(',') if not pd.isna(status_bosch_ppx) else ''
             brs_status_norm = str(brs_status).strip().rstrip(',') if not pd.isna(brs_status) else ''
             if (status_bosch_ppx_norm == '015' or status_bosch_ppx_norm == '15') and brs_status_norm != 'abgestimmt':
+                object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+                typ_str = 'Empty' if pd.isna(typ) or str(typ).strip() == '' else str(typ).rstrip(',')
                 findings.append({
                     'Row': index + 2,  # Excel row numbering
+                    'Check Number': 'Nr.10',
+                    'Object ID': object_id_str,
                     'Attribute': 'CR-Status_Bosch_PPx, BRS-1Box_Status_Hersteller_Bosch_PPx',
                     'Issue': ("'CR-Status_Bosch_PPx' is '15' but 'BRS-1Box_Status_Hersteller_Bosch_PPx' is not 'abgestimmt'."),
                     'Value': (
-                        f"Object ID: {object_id if not pd.isna(object_id) and object_id != '' else 'Empty'}\n"
-                        f"Typ: {typ if not pd.isna(typ) and typ != '' else 'Empty'}\n"
+                        f"Object ID: {object_id_str}\n"
+                        f"Typ: {typ_str}\n"
+                        f"\n"
                         f"---------------\n"
                         f"       File Name: {os.path.basename(file_path)}\n"
                         f"       CR-Status_Bosch_PPx: {status_bosch_ppx_norm}\n"
@@ -565,15 +629,24 @@ class ProjectCheckerPPE:
                     row['Typ'] == "Anforderung,":
                 if row['BRS-1Box_Status_Zulieferer_Bosch_PPx'] \
                         not in ["akzeptiert", "abgelehnt"]:
+                    object_id = row.get('Object ID', None)
+                    object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+                    typ_str = str(row['Typ']).rstrip(',')
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.1 (Export)',
+                        'Object ID': object_id_str,
                         'Attribute': 'CR-ID_Bosch_PPx, Typ, 1Box_Status_Zulieferer_Bosch_PPx',
                         'Issue': (
                             "'CR-ID_Bosch_PPx' is not empty and 'Typ' is 'Anforderung', "
                             "but 'BRS-1Box_Status_Zulieferer_Bosch_PPx' is not 'akzeptiert' or 'abgelehnt'"),
                         'Value': (
-                            f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}, "
-                            f"Typ: {row['Typ'].rstrip(',')}, BRS-1Box_Status_Zulieferer_Bosch_PPx: {row['BRS-1Box_Status_Zulieferer_Bosch_PPx']}")
+                            f"Object ID: {object_id_str}\n"
+                            f"Typ: {typ_str}\n"
+                            f"\n"
+                            f"---------------\n"
+                            f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}\n"
+                            f"BRS-1Box_Status_Zulieferer_Bosch_PPx: {row['BRS-1Box_Status_Zulieferer_Bosch_PPx']}")
                     })
         return findings
 
@@ -598,12 +671,22 @@ class ProjectCheckerPPE:
                 value = str(
                     row['BRS-1Box_Status_Zulieferer_Bosch_PPx']).lower()
                 if value != "n/a":
+                    object_id = row.get('Object ID', None)
+                    object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+                    typ_str = str(row['Typ']).rstrip(',')
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.2 (Export)',
+                        'Object ID': object_id_str,
                         'Attribute': 'Typ, BRS-1Box_Status_Zulieferer_Bosch_PPx',
                         'Issue': ("'Typ' is 'Überschrift' or 'Information', "
                                   "but 'BRS-1Box_Status_Zulieferer_Bosch_PPx' is not 'n/a'"),
-                        'Value': f"Typ: {row['Typ'].rstrip(',')}, BRS-1Box_Status_Zulieferer_Bosch_PPx: {value}"
+                        'Value': (
+                            f"Object ID: {object_id_str}\n"
+                            f"Typ: {typ_str}\n"
+                            f"\n"
+                            f"---------------\n"
+                            f"BRS-1Box_Status_Zulieferer_Bosch_PPx: {value}")
                     })
         return findings
 

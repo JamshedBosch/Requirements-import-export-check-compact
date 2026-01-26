@@ -102,15 +102,19 @@ class ProjectCheckerSSP:
                     # Strip any trailing comma from oem_status for comparison
                     oem_status_clean = oem_status.rstrip(',')
                     if oem_status_clean not in ['zu bewerten', 'verworfen']:
+                        category_str = 'Empty' if pd.isna(category) or str(category).strip() == '' else str(category).rstrip(',')
                         findings.append({
                             'Row': index + 2,  # Adjust for Excel row numbering
+                            'Check Number': 'Nr.6',
+                            'Object ID': str(object_id),
                             'Attribute': 'ReqIF.Text, Status OEM zu Lieferant R',
                             'Issue': (
                                 f"'ReqIF.Text' differs from 'Object Text' but 'Status OEM zu Lieferant R' is not 'zu bewerten."
                             ),
                             'Value': (
-                                f"{identifier_col}: {object_id}\n"
-                                f"{category_col}: {category}\n\n"
+                                f"Object ID: {object_id}\n"
+                                f"Typ: {category_str}\n"
+                                f"\n"
                                 f"---------------\n"
                                 f"       Customer File Name: {os.path.basename(file_path)}\n"
                                 f"       Customer File Object Text: {object_text_str}\n"
@@ -355,13 +359,17 @@ class ProjectCheckerSSP:
                     # Display status as "Empty" if it's nan or empty string
                     display_status = "Empty" if pd.isna(row.get('Status OEM zu Lieferant R')) or str(row.get('Status OEM zu Lieferant R', '')).strip() == "" else oem_status
 
+                    category_str = 'Empty' if pd.isna(category) or str(category).strip() == '' else str(category).rstrip(',')
                     findings.append({
                         'Row': index + 2,  # Adjust for Excel row numbering
+                        'Check Number': 'Nr.8',
+                        'Object ID': str(object_id),
                         'Attribute': attribute_list,
                         'Issue': "Attributes differ but 'Status OEM zu Lieferant R' is not 'zu bewerten'.",
                         'Value': (
-                            f"{identifier_col}: {object_id}\n"
-                            f"{category_col}: {category}\n\n"
+                            f"Object ID: {object_id}\n"
+                            f"Typ: {category_str}\n"
+                            f"\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
@@ -456,15 +464,19 @@ class ProjectCheckerSSP:
 
                 if normalized_quelle != normalized_compare_quelle:
                     if oem_status not in ['zu bewerten,', 'verworfen,']:
+                        category_str = 'Empty' if pd.isna(category) or str(category).strip() == '' else str(category).rstrip(',')
                         findings.append({
                             'Row': index + 2,  # Adjust for Excel row numbering
+                            'Check Number': 'Nr.9',
+                            'Object ID': str(object_id),
                             'Attribute': 'Quelle, Status OEM zu Lieferant R',
                             'Issue': (
                                 f"'Quelle' differs between files but 'Status OEM zu Lieferant R' is not 'zu bewerten'."
                             ),
                             'Value': (
-                                f"{identifier_col}: {object_id}\n"
-                                f"{category_col}: {category}\n\n"
+                                f"Object ID: {object_id}\n"
+                                f"Typ: {category_str}\n"
+                                f"\n"
                                 f"---------------\n"
                                 f"       Customer File Name: {os.path.basename(file_path)}\n"
                                 f"       Customer Attribute: Quelle\n"
@@ -578,15 +590,19 @@ class ProjectCheckerSSP:
                 normalized_compare_text = HelperFunctions.normalize_text(compare_text_str)
 
                 if normalized_reqif_text != normalized_compare_text:
+                    category_str = 'Empty' if pd.isna(category) or str(category).strip() == '' else str(category).rstrip(',')
                     findings.append({
                         'Row': index + 2,  # Adjust for Excel row numbering
+                        'Check Number': 'Nr.10',
+                        'Object ID': str(object_id),
                         'Attribute': 'ReqIF.Text, Object Text',
                         'Issue': (
                             f"'ReqIF.Text' differs from 'Object Text' between files, may be the translation is needed (FOR INTERNAL USE ONLY!)."
                         ),
                         'Value': (
-                            f"{identifier_col}: {object_id}\n"
-                            f"{category_col}: {category}\n\n"
+                            f"Object ID: {object_id}\n"
+                            f"Typ: {category_str}\n"
+                            f"\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Customer File Object Text: {reqif_text_str}\n"
