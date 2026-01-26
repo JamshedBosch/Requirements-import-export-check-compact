@@ -538,15 +538,15 @@ class ProjectCheckerSDV01:
                         'Attribute': ', '.join(empty_columns),
                         'Issue': (
                             f"{', '.join(empty_columns)} "
-                            f\"{'is' if len(empty_columns) == 1 else 'are'} empty while "
+                            f"{'is' if len(empty_columns) == 1 else 'are'} empty while "
                             "BRS_Status_Hersteller_Bosch_SDV0.1 is not 'verworfen'."
                         ),
                         'Value': "\n".join(details)
                     })
 
         logger.info(
-            f\"Completed required attributes check (SDV01). "
-            f"Found {len(findings)} issues in {len(available_columns)} available columns.\"
+            f"Completed required attributes check (SDV01). "
+            f"Found {len(findings)} issues in {len(available_columns)} available columns."
         )
         return findings
 

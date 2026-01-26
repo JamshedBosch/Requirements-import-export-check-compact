@@ -1,7 +1,7 @@
 # Requirements Import/Export Checks Documentation
 
 ## Overview
-This documentation explains the validation checks implemented in `ChecksPPE.py` and `ChecksSSP.py`. These checks ensure data integrity and consistency in requirement files during import and export operations.
+This documentation explains the validation checks implemented in `ChecksPPE.py`, `ChecksSSP.py`, and `ChecksSDV01.py`. These checks ensure data integrity and consistency in requirement files during import and export operations.
 
 ## ChecksPPE.py
 The `ProjectCheckerPPE` class implements various checks for PPE (Product Performance Engineering) requirements.
@@ -263,6 +263,210 @@ The `ProjectCheckerSSP` class implements checks for SSP (Scalable System Platfor
   - Includes current status for reference
   - Maintains consistent formatting with other checks
   - Indicates potential translation needs in the issue description
+
+## ChecksSDV01.py
+The `ProjectCheckerSDV01` class implements checks for SDV01 requirements.
+
+### Import Checks
+
+#### 1. Empty Object ID with Forbidden CR Status
+**Method**: `check_empty_object_id_with_forbidden_cr_status`
+- **Purpose**: Validates that rows with empty Object IDs don't have forbidden CR status values
+- **Conditions**:
+  - Checks if 'Object ID' is empty
+  - Checks if 'CR-Status_Bosch_SDV0.1' is in forbidden values: ['014,', '031,', '100,']
+- **Finding Trigger**: Empty Object ID combined with a forbidden status
+
+#### 2. CR Status Bosch SDV0.1 Conditions
+**Method**: `check_cr_status_bosch_sdv01_conditions`
+- **Purpose**: Validates consistency between CR status, CR ID, and BRS status
+- **Conditions**:
+  - 'CR-Status_Bosch_SDV0.1' is empty or '---'
+  - 'CR-ID_Bosch_SDV0.1' is not empty
+  - 'BRS_Status_Hersteller_Bosch_SDV0.1' is not 'verworfen'
+- **Finding Trigger**: All conditions are true simultaneously
+
+#### 3. Missing Release for Verworfen Status
+**Method**: `check_missing_release_for_verworfen_status`
+- **Purpose**: Ensures release fields are filled when requirement is rejected
+- **Checks**:
+  - EntfallRelease and ErsteinsatzRelease emptiness
+- **Conditions**:
+  - 'Object ID' is filled
+  - 'BRS_Status_Hersteller_Bosch_SDV0.1' == 'verworfen'
+- **Finding Trigger**: At least one of EntfallRelease or ErsteinsatzRelease is empty when conditions are met
+
+#### 4. CR ID and BRS Status Comparison
+**Method**: `compare_cr_id_and_brs_status_by_object_id`
+- **Purpose**: Compares CR-ID and BRS Status between customer and Bosch files
+- **Conditions**:
+  - Matches rows by 'Object ID'
+  - Only checks rows where 'Typ' is 'Anforderung' (with or without trailing comma)
+  - Compares 'CR-ID_Bosch_SDV0.1' and 'BRS_Status_Hersteller_Bosch_SDV0.1' between files
+- **Finding Trigger**: Any difference found in either CR-ID or BRS Status
+- **Report Format**:
+  ```
+  Object ID: [object_id]
+  ---------------
+  Customer File Name: [filename]
+  Customer CR-ID_Bosch_SDV0.1: [value]
+  Customer BRS_Status_Hersteller_Bosch_SDV0.1: [value]
+  Customer CR-Status_Bosch_SDV0.1: [value]
+  ---------------
+  Bosch File Name: [filename]
+  Bosch CR-ID_Bosch_SDV0.1: [value]
+  Bosch BRS_Status_Hersteller_Bosch_SDV0.1: [value]
+  Bosch CR-Status_Bosch_SDV0.1: [value]
+  ```
+  - Shows both customer and Bosch values for comparison
+  - CR-Status is shown for context but not compared
+
+#### 5. ReqIF.Text with Status Hersteller Bosch SDV0.1
+**Method**: `check_reqif_text_with_status_hersteller_bosch_sdv01`
+- **Purpose**: Compares ReqIF.Text with Object Text and validates status
+- **Conditions**:
+  - Compares 'ReqIF.Text' (customer) with 'Object Text' (Bosch reference) by 'Object ID'
+  - Text differs between files
+  - 'BRS_Status_Hersteller_Bosch_SDV0.1' is not 'neu/geändert' (with or without trailing comma)
+- **Text Comparison**:
+  - Uses text normalization for consistent comparison
+  - Skips comparison if Object ID not found in reference file
+- **Finding Trigger**: Text differences without appropriate status
+- **Report Format**:
+  ```
+  Object ID: [object_id]
+  ---------------
+  Customer File Name: [filename]
+  Customer File ReqIF.Text: [value]
+  ---------------
+  Bosch File Name: [filename]
+  Bosch File Object Text: [value]
+  ---------------
+  BRS_Status_Hersteller_Bosch_SDV0.1: [status]
+  Expected Status: neu/geändert
+  ```
+
+#### 6. Object Text with RB AS Status
+**Method**: `check_object_text_with_rb_as_status`
+- **Purpose**: Validates Object Text changes against RB AS Status
+- **Conditions**:
+  - Compares 'Object Text' between customer (Audi ReqIF) and Bosch files by 'Object ID'
+  - Object Text differs between files
+  - 'RB_AS_Status' (from Bosch file) is in ['accepted', 'no_req', 'canceled_closed']
+- **Finding Trigger**: Text differences with prohibited status values
+- **Report Format**:
+  ```
+  Object ID: [object_id]
+  ---------------
+  Bosch File Name: [filename]
+  Bosch File Object Text: [value]
+  ---------------
+  Customer File Name: [filename]
+  Customer File Object Text: [value]
+  ---------------
+  RB_AS_Status: [status]
+  ```
+
+#### 7. Required Attributes Not Empty
+**Method**: `check_required_attributes_not_empty`
+- **Purpose**: Ensures critical attributes are not empty when requirement is active
+- **Required Attributes**:
+  - Object ID
+  - Object Text
+  - Technikvariante
+  - Typ
+- **Conditions**:
+  - 'BRS_Status_Hersteller_Bosch_SDV0.1' is not 'verworfen'
+  - At least one of the required attributes must be present in the file
+- **Flexible Execution**:
+  - Check runs if any of the required attributes exists
+  - Only validates attributes that are present in the file
+  - Skips check if BRS status column is missing
+- **Finding Trigger**: Any available required attribute is empty when BRS status is not 'verworfen'
+- **Report Format**:
+  ```
+  Row: [row_number]
+  Attribute: [empty_attribute_name]
+  Issue: [attribute_name] is/are empty while BRS_Status_Hersteller_Bosch_SDV0.1 is not 'verworfen'.
+  Details:
+  Object ID: [id_value] (if available)
+  Empty Attributes: [list_of_empty_columns]
+  BRS_Status_Hersteller_Bosch_SDV0.1: [status_value]
+  ```
+  - Object ID is included in details when available for easy requirement tracing
+  - Multiple empty attributes are listed under Empty Attributes
+  - Grammar adapts to single/multiple empty attributes ("is"/"are")
+
+#### 8. New Requirements Without CR-ID
+**Method**: `check_new_requirements_without_cr_id`
+- **Purpose**: Ensures new requirements have a CR-ID assigned
+- **Conditions**:
+  - 'Object ID' exists in customer file but not in Bosch reference file
+  - 'CR-ID_Bosch_SDV0.1' is empty
+- **Finding Trigger**: New requirement without CR-ID assignment
+- **Report Format**:
+  ```
+  Object ID: [object_id]
+  Typ: [typ_value]
+  ---------------
+  Customer File Name: [filename]
+  Customer CR-ID_Bosch_SDV0.1: Empty
+  ---------------
+  Bosch File Name: [filename]
+  Bosch Object ID: Not found
+  ```
+  - Includes hint that all new requirements should have a CR-ID assigned
+
+#### 9. CR-ID Must Not Be Empty
+**Method**: `check_cr_id_must_not_be_empty`
+- **Purpose**: Ensures CR-ID_Bosch_SDV0.1 is always present, especially for rejected requirements
+- **Conditions**:
+  - 'CR-ID_Bosch_SDV0.1' is empty, OR
+  - 'BRS_Status_Hersteller_Bosch_SDV0.1' = 'verworfen' AND 'CR-ID_Bosch_SDV0.1' is empty
+- **Finding Trigger**: Empty CR-ID (always), or empty CR-ID when status is 'verworfen'
+- **Erklärung**:
+  - CR-ID_Bosch_SDV0.1 darf nicht leer sein
+  - Wenn der Kunde eine Anforderung verwirft, darf dieser nicht ohne einen neuen CR erfolgen
+  - Eine verworfene Anforderung muss mit einem CR bei Bosch kommen
+- **Report Format**:
+  ```
+  Row: [row_number]
+  Attribute: CR-ID_Bosch_SDV0.1, BRS_Status_Hersteller_Bosch_SDV0.1
+  Issue: [specific message based on status]
+  Value:
+  CR-ID_Bosch_SDV0.1: Empty
+  BRS_Status_Hersteller_Bosch_SDV0.1: [status]
+  ```
+  - Issue message is more specific when status is 'verworfen', emphasizing that rejected requirements must have a CR-ID
+
+#### 10. CR Status Overwrite Protection
+**Method**: `check_cr_status_overwrite_protection`
+- **Purpose**: Prevents overwriting protected Bosch CR-Status values
+- **Conditions**:
+  - 'CR-ID_Bosch_SDV0.1' is present (check only runs if CR-ID exists)
+  - Bosch file has 'CR-Status_Bosch_SDV0.1' = '100' or '31' (with or without trailing comma)
+  - Customer file has a different 'CR-Status_Bosch_SDV0.1' value
+- **Finding Trigger**: Attempt to overwrite protected Bosch status (100 or 31)
+- **Erklärung**:
+  - Wenn der CR-ID vorhanden ist, und bei Bosch CR-Status 31 oder 100 ist,
+  - dann darf der CR-Status nicht mit neuem CR-Status überschrieben werden
+- **Report Format**:
+  ```
+  Object ID: [object_id]
+  CR-ID_Bosch_SDV0.1: [cr_id]
+  ---------------
+  Customer File Name: [filename]
+  Customer CR-Status_Bosch_SDV0.1: [value]
+  ---------------
+  Bosch File Name: [filename]
+  Bosch CR-Status_Bosch_SDV0.1: [value]
+  ---------------
+  Note: Bosch CR-Status '100' or '31' must not be overwritten.
+  ```
+  - Clearly indicates that protected status values should not be overwritten
+
+### Export Checks
+- No export checks implemented yet (placeholder exists)
 
 ## Common Features
 
