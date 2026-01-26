@@ -214,6 +214,21 @@ class ReportGenerator:
     @staticmethod
     def format_issue(finding):
         """Format a single issue for the report."""
+        # Extract Check Number and Object ID from finding dict
+        check_number = finding.get('Check Number', 'N/A')
+        object_id = finding.get('Object ID', None)
+        
+        # If Object ID not in dict, try to extract from Value field
+        if object_id is None:
+            value_lines = finding['Value'].split('\n')
+            for line in value_lines:
+                if line.startswith('Object ID:'):
+                    object_id = line.replace('Object ID:', '').strip()
+                    break
+        
+        # Format Object ID for display
+        object_id_display = str(object_id) if object_id else 'N/A'
+        
         # Extract customer and Bosch texts from the Value string
         value_lines = finding['Value'].split('\n')
         customer_text = ""
@@ -231,11 +246,6 @@ class ReportGenerator:
         customer_text = customer_text if customer_text else ""
         bosch_text = bosch_text if bosch_text else ""
 
-        # Debugging output
-        # print(f"DEBUG - format_issue called for Row: {finding['Row']}")
-        # print(f"DEBUG - Customer Text: {repr(customer_text)}")
-        # print(f"DEBUG - Bosch Text: {repr(bosch_text)}")
-
         # Ensure highlight_differences is always called
         highlighted_customer, highlighted_bosch = ReportGenerator.highlight_differences(
             customer_text, bosch_text)
@@ -248,11 +258,25 @@ class ReportGenerator:
             elif "Bosch File Object Text:" in line:
                 value_lines[
                     i] = f"       Bosch File Object Text: {highlighted_bosch}"
+            # Replace "nan" with "Empty" for better readability
+            elif "nan" in line.lower():
+                value_lines[i] = line.replace("nan", "Empty").replace("NaN", "Empty")
 
         formatted_value = "<br>".join(value_lines)
 
+        # Build header with Check Number and Object ID
+        header_parts = []
+        if check_number != 'N/A':
+            header_parts.append(f"⚠️ Check {check_number}")
+        else:
+            header_parts.append("⚠️")
+        header_parts.append(f"Row: {finding['Row']}")
+        if object_id_display != 'N/A':
+            header_parts.append(f"Object ID: {object_id_display}")
+        header_text = " | ".join(header_parts)
+
         return f"""        <div class="issue">
-                       <h2>⚠️ Row: {finding['Row']}</h2>
+                       <h2>{header_text}</h2>
                        <p><strong>Attributes:</strong> {finding['Attribute']}</p>
                        <p><strong>Check:</strong> {finding['Issue']}</p>
                        <p><strong>Details:</strong></p>
@@ -266,6 +290,22 @@ class ReportGenerator:
             report_file = os.path.join(report_folder, f"{os.path.basename(file_path).replace('.xlsx', '')}_report.xlsx")
             df = pd.DataFrame(findings)
             df = df.rename(columns={'Value': 'Details'})
+            
+            # Reorder columns to put Check Number and Object ID first if they exist
+            column_order = []
+            if 'Check Number' in df.columns:
+                column_order.append('Check Number')
+            if 'Object ID' in df.columns:
+                column_order.append('Object ID')
+            if 'Row' in df.columns:
+                column_order.append('Row')
+            
+            # Add remaining columns
+            for col in df.columns:
+                if col not in column_order:
+                    column_order.append(col)
+            
+            df = df[column_order]
             df.to_excel(report_file, index=False)
             return report_file
         except Exception as e:

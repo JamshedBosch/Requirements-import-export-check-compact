@@ -41,15 +41,22 @@ class ProjectCheckerSDV01:
                     f"{row['CR-Status_Bosch_SDV0.1']}"
                 )
                 object_id = "Empty"
+                typ_value = row.get('Typ', None)
+                typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                 findings.append({
                     'Row': index + 2,  # Excel rows start at 1; +2 accounts for header row
+                    'Check Number': 'Nr.1',
+                    'Object ID': object_id,
                     'Attribute': 'Object ID, CR-Status_Bosch_SDV0.1',
                     'Issue': (
                         "Empty 'Object ID' with forbidden 'CR-Status_Bosch_SDV0.1' value "
                         "(014, 031 or 100 are not allowed with empty Object ID)."
                     ),
                     'Value': (
-                        f"Object ID: {object_id}, "
+                        f"Object ID: {object_id}\n"
+                        f"Typ: {typ_str}\n"
+                        f"\n"
+                        f"---------------\n"
                         f"CR-Status_Bosch_SDV0.1: {row['CR-Status_Bosch_SDV0.1']}"
                     )
                 })
@@ -105,8 +112,14 @@ class ProjectCheckerSDV01:
                 cr_status_display = cr_status_raw
 
             if cr_status_invalid and cr_id_present and brs_status_norm != "verworfen":
+                object_id = row.get('Object ID', 'N/A')
+                object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+                typ_value = row.get('Typ', None)
+                typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                 findings.append({
                     'Row': index + 2,
+                    'Check Number': 'Nr.2',
+                    'Object ID': object_id_str,
                     'Attribute': (
                         'CR-Status_Bosch_SDV0.1, CR-ID_Bosch_SDV0.1, '
                         'BRS_Status_Hersteller_Bosch_SDV0.1'
@@ -116,8 +129,12 @@ class ProjectCheckerSDV01:
                         "is not empty and 'BRS_Status_Hersteller_Bosch_SDV0.1' is not 'verworfen'."
                     ),
                     'Value': (
-                        f"CR-Status_Bosch_SDV0.1: {cr_status_display}, "
-                        f"CR-ID_Bosch_SDV0.1: {cr_id_raw}, "
+                        f"Object ID: {object_id_str}\n"
+                        f"Typ: {typ_str}\n"
+                        f"\n"
+                        f"---------------\n"
+                        f"CR-Status_Bosch_SDV0.1: {cr_status_display}\n"
+                        f"CR-ID_Bosch_SDV0.1: {cr_id_raw}\n"
                         f"BRS_Status_Hersteller_Bosch_SDV0.1: {brs_status_norm}"
                     )
                 })
@@ -181,8 +198,12 @@ class ProjectCheckerSDV01:
             if not missing_attrs:
                 continue
 
+            typ_value = row.get('Typ', None)
+            typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
             findings.append({
                 'Row': index + 2,
+                'Check Number': 'Nr.3',
+                'Object ID': str(object_id),
                 'Attribute': ', '.join(missing_attrs),
                 'Issue': (
                     f"{', '.join(missing_attrs)} is empty while "
@@ -191,6 +212,9 @@ class ProjectCheckerSDV01:
                 ),
                 'Value': (
                     f"Object ID: {object_id}\n"
+                    f"Typ: {typ_str}\n"
+                    f"\n"
+                    f"---------------\n"
                     f"BRS_Status_Hersteller_Bosch_SDV0.1: {brs_status_norm}\n"
                     f"EntfallRelease: {entfall if not pd.isna(entfall) else 'Empty'}\n"
                     f"ErsteinsatzRelease: {ersteinsatz if not pd.isna(ersteinsatz) else 'Empty'}"
@@ -280,8 +304,12 @@ class ProjectCheckerSDV01:
                 norm_ref_brs_status = str(ref_brs_status).rstrip(',') if not pd.isna(ref_brs_status) else ''
 
                 if norm_cr_id != norm_ref_cr_id or norm_brs_status != norm_ref_brs_status:
+                    typ_value = row.get('Typ', None)
+                    typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.4',
+                        'Object ID': str(object_id),
                         'Attribute': (
                             'CR-ID_Bosch_SDV0.1, '
                             'BRS_Status_Hersteller_Bosch_SDV0.1, '
@@ -294,6 +322,8 @@ class ProjectCheckerSDV01:
                         ),
                         'Value': (
                             f"Object ID: {object_id}\n"
+                            f"Typ: {typ_str}\n"
+                            f"\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Customer CR-ID_Bosch_SDV0.1: {cr_id_str}\n"
@@ -369,21 +399,29 @@ class ProjectCheckerSDV01:
                 brs_status_clean = str(brs_status).strip().rstrip(',') if not pd.isna(brs_status) else ""
                 # If text differs, status must be 'neu/geändert'
                 if brs_status_clean != 'neu/geändert':
+                    # Handle nan values in compare_text
+                    compare_text_display = 'Empty' if pd.isna(compare_text) or str(compare_text).strip() == '' else str(compare_text)
+                    typ_value = row.get('Typ', None)
+                    typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.5',
+                        'Object ID': str(object_id),
                         'Attribute': 'ReqIF.Text, BRS_Status_Hersteller_Bosch_SDV0.1',
                         'Issue': (
                             "'ReqIF.Text' differs from 'Object Text' but "
                             "'BRS_Status_Hersteller_Bosch_SDV0.1' is not 'neu/geändert'."
                         ),
                         'Value': (
-                            f"Object ID: {object_id}\n\n"
+                            f"Object ID: {object_id}\n"
+                            f"Typ: {typ_str}\n"
+                            f"\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Customer File ReqIF.Text: {reqif_text}\n"
                             f"---------------\n"
                             f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
-                            f"       Bosch File Object Text: {compare_text}\n"
+                            f"       Bosch File Object Text: {compare_text_display}\n"
                             f"---------------\n"
                             f"       BRS_Status_Hersteller_Bosch_SDV0.1: {brs_status if not pd.isna(brs_status) and str(brs_status).strip() != '' else 'Empty'}\n\n"
                             f"       Expected Status: neu/geändert"
@@ -453,8 +491,15 @@ class ProjectCheckerSDV01:
             if normalized_customer_text != normalized_bosch_text:
                 # Only problematic when RB_AS_Status is in one of these values
                 if rb_as_status in ['accepted', 'no_req', 'canceled_closed']:
+                    # Handle nan values
+                    bosch_text_display = 'Empty' if pd.isna(bosch_text) or str(bosch_text).strip() == '' else str(bosch_text)
+                    customer_text_display = 'Empty' if pd.isna(customer_text) or str(customer_text).strip() == '' else str(customer_text)
+                    typ_value = row.get('Typ', None)
+                    typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.6',
+                        'Object ID': str(object_id),
                         'Attribute': 'Object Text, RB_AS_Status',
                         'Issue': (
                             "'Object Text' differs but 'RB_AS_Status' is one of the prohibited values "
@@ -462,12 +507,14 @@ class ProjectCheckerSDV01:
                         ),
                         'Value': (
                             f"Object ID: {object_id}\n"
+                            f"Typ: {typ_str}\n"
+                            f"\n"
                             f"---------------\n"
                             f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
-                            f"       Bosch File Object Text: {bosch_text}\n"
+                            f"       Bosch File Object Text: {bosch_text_display}\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
-                            f"       Customer File Object Text: {customer_text}\n"
+                            f"       Customer File Object Text: {customer_text_display}\n"
                             f"---------------\n"
                             f"       RB_AS_Status: {rb_as_status}"
                         )
@@ -528,13 +575,22 @@ class ProjectCheckerSDV01:
 
                 if empty_columns:
                     details = []
-                    if 'Object ID' in df.columns and not pd.isna(row['Object ID']):
-                        details.append(f"Object ID: {row['Object ID']}")
+                    object_id = row.get('Object ID', None)
+                    object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+                    typ_value = row.get('Typ', None)
+                    typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
+                    if 'Object ID' in df.columns:
+                        details.append(f"Object ID: {object_id_str}")
+                    details.append(f"Typ: {typ_str}")
+                    details.append("")
+                    details.append("---------------")
                     details.append(f"Empty Attributes: {', '.join(empty_columns)}")
                     details.append(f"BRS_Status_Hersteller_Bosch_SDV0.1: {brs_status_norm}")
 
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.7',
+                        'Object ID': object_id_str,
                         'Attribute': ', '.join(empty_columns),
                         'Issue': (
                             f"{', '.join(empty_columns)} "
@@ -605,8 +661,11 @@ class ProjectCheckerSDV01:
                 continue
 
             if object_id not in bosch_object_ids and (pd.isna(cr_id) or str(cr_id).strip() == ''):
+                typ_str = 'Empty' if pd.isna(typ) or str(typ).strip() == '' else str(typ).rstrip(',')
                 findings.append({
                     'Row': index + 2,
+                    'Check Number': 'Nr.8',
+                    'Object ID': str(object_id),
                     'Attribute': 'Object ID, CR-ID_Bosch_SDV0.1',
                     'Issue': (
                         "New requirement (Object ID) found in Customer document that does not exist "
@@ -615,7 +674,8 @@ class ProjectCheckerSDV01:
                     ),
                     'Value': (
                         f"Object ID: {object_id}\n"
-                        f"Typ: {'Empty' if pd.isna(typ) or str(typ).strip() == '' else typ}\n"
+                        f"Typ: {typ_str}\n"
+                        f"\n"
                         f"---------------\n"
                         f"       Customer File Name: {os.path.basename(file_path)}\n"
                         f"       Customer CR-ID_Bosch_SDV0.1: {'Empty' if pd.isna(cr_id) or str(cr_id).strip() == '' else cr_id}\n"
@@ -657,6 +717,10 @@ class ProjectCheckerSDV01:
         for index, row in df.iterrows():
             cr_id = row['CR-ID_Bosch_SDV0.1']
             brs_status_raw = row['BRS_Status_Hersteller_Bosch_SDV0.1']
+            object_id = row.get('Object ID', None)
+            object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+            typ_value = row.get('Typ', None)
+            typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
 
             # Normalize BRS status
             if pd.isna(brs_status_raw) or str(brs_status_raw).strip() == "":
@@ -679,9 +743,15 @@ class ProjectCheckerSDV01:
 
                 findings.append({
                     'Row': index + 2,
+                    'Check Number': 'Nr.9',
+                    'Object ID': object_id_str,
                     'Attribute': 'CR-ID_Bosch_SDV0.1, BRS_Status_Hersteller_Bosch_SDV0.1',
                     'Issue': issue_msg,
                     'Value': (
+                        f"Object ID: {object_id_str}\n"
+                        f"Typ: {typ_str}\n"
+                        f"\n"
+                        f"---------------\n"
                         f"CR-ID_Bosch_SDV0.1: Empty\n"
                         f"BRS_Status_Hersteller_Bosch_SDV0.1: {brs_status_norm}"
                     )
@@ -770,9 +840,13 @@ class ProjectCheckerSDV01:
                 if customer_cr_status_norm != bosch_cr_status_norm:
                     customer_cr_status_str = 'Empty' if pd.isna(customer_cr_status) or str(customer_cr_status).strip() == '' else customer_cr_status
                     bosch_cr_status_str = 'Empty' if pd.isna(bosch_cr_status) or str(bosch_cr_status).strip() == '' else bosch_cr_status
+                    typ_value = row.get('Typ', None)
+                    typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
 
                     findings.append({
                         'Row': index + 2,
+                        'Check Number': 'Nr.10',
+                        'Object ID': str(object_id),
                         'Attribute': 'CR-Status_Bosch_SDV0.1',
                         'Issue': (
                             "'CR-Status_Bosch_SDV0.1' differs from Bosch file. "
@@ -780,7 +854,8 @@ class ProjectCheckerSDV01:
                         ),
                         'Value': (
                             f"Object ID: {object_id}\n"
-                            f"CR-ID_Bosch_SDV0.1: {cr_id}\n"
+                            f"Typ: {typ_str}\n"
+                            f"\n"
                             f"---------------\n"
                             f"       Customer File Name: {os.path.basename(file_path)}\n"
                             f"       Customer CR-Status_Bosch_SDV0.1: {customer_cr_status_str}\n"
