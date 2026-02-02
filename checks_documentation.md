@@ -288,13 +288,13 @@ The `ProjectCheckerSDV01` class implements checks for SDV01 requirements.
 
 #### 3. Missing Release for Verworfen Status
 **Method**: `check_missing_release_for_verworfen_status`
-- **Purpose**: Ensures release fields are filled when requirement is rejected
+- **Purpose**: Ensures release fields are filled for requirements that are not rejected
 - **Checks**:
   - EntfallRelease and ErsteinsatzRelease emptiness
 - **Conditions**:
-  - 'Object ID' is filled
-  - 'BRS_Status_Hersteller_Bosch_SDV0.1' == 'verworfen'
-- **Finding Trigger**: At least one of EntfallRelease or ErsteinsatzRelease is empty when conditions are met
+  - 'BRS_Status_Hersteller_Bosch_SDV0.1' != 'verworfen'
+  - At least one of 'EntfallRelease' or 'ErsteinsatzRelease' is empty
+- **Finding Trigger**: `EntfallRelease` OR `ErsteinsatzRelease` is empty while BRS status is not 'verworfen'
 
 #### 4. CR ID and BRS Status Comparison
 **Method**: `compare_cr_id_and_brs_status_by_object_id`
@@ -417,48 +417,60 @@ The `ProjectCheckerSDV01` class implements checks for SDV01 requirements.
   ```
   - Includes hint that all new requirements should have a CR-ID assigned
 
-#### 9. CR-ID Must Not Be Empty
-**Method**: `check_cr_id_must_not_be_empty`
-- **Purpose**: Ensures CR-ID_Bosch_SDV0.1 is always present, especially for rejected requirements
-- **Conditions**:
-  - 'CR-ID_Bosch_SDV0.1' is empty, OR
-  - 'BRS_Status_Hersteller_Bosch_SDV0.1' = 'verworfen' AND 'CR-ID_Bosch_SDV0.1' is empty
-- **Finding Trigger**: Empty CR-ID (always), or empty CR-ID when status is 'verworfen'
+#### 9. New CR Exists for Rejected Requirements
+**Method**: `check_new_cr_exists_for_rejected_requirements`
+- **Purpose**: Ensures a rejected requirement in the customer file comes with a *new* CR (i.e., CR-ID must not remain the same as in Bosch)
+- **Reference File**:
+  - Requires a Bosch reference file
+  - Matches rows by `Object ID`
+- **Conditions** (all must be true):
+  - `BRS_Status_Hersteller_Bosch_SDV0.1` (Customer) == `verworfen`
+  - `BRS_Status_Hersteller_Bosch_SDV0.1` (Bosch) != `verworfen`
+  - `CR-ID_Bosch_SDV0.1` (Customer) == `CR-ID_Bosch_SDV0.1` (Bosch) (normalized)
+- **Finding Trigger**: Customer rejects a requirement but the CR-ID is unchanged compared to Bosch (no new CR)
 - **Erklärung**:
-  - CR-ID_Bosch_SDV0.1 darf nicht leer sein
   - Wenn der Kunde eine Anforderung verwirft, darf dieser nicht ohne einen neuen CR erfolgen
   - Eine verworfene Anforderung muss mit einem CR bei Bosch kommen
 - **Report Format**:
   ```
   Row: [row_number]
   Attribute: CR-ID_Bosch_SDV0.1, BRS_Status_Hersteller_Bosch_SDV0.1
-  Issue: [specific message based on status]
+  Issue: Customer is 'verworfen' while Bosch is not, and CR-ID is unchanged
   Value:
-  CR-ID_Bosch_SDV0.1: Empty
-  BRS_Status_Hersteller_Bosch_SDV0.1: [status]
+  Object ID: [object_id]
+  ---------------
+         Customer File Name: [filename]
+         Customer CR-ID_Bosch_SDV0.1: [value]
+         Customer BRS_Status_Hersteller_Bosch_SDV0.1: verworfen
+  ---------------
+         Bosch File Name: [filename]
+         Bosch CR-ID_Bosch_SDV0.1: [value]
+         Bosch BRS_Status_Hersteller_Bosch_SDV0.1: [value != verworfen]
   ```
-  - Issue message is more specific when status is 'verworfen', emphasizing that rejected requirements must have a CR-ID
+  - Values are compared after normalization (whitespace/trailing commas ignored where applicable)
 
 #### 10. CR Status Overwrite Protection
 **Method**: `check_cr_status_overwrite_protection`
 - **Purpose**: Prevents overwriting protected Bosch CR-Status values
 - **Conditions**:
-  - 'CR-ID_Bosch_SDV0.1' is present (check only runs if CR-ID exists)
+  - 'CR-ID_Bosch_SDV0.1' is present in customer and Bosch files
+  - Customer 'CR-ID_Bosch_SDV0.1' == Bosch 'CR-ID_Bosch_SDV0.1' (normalized)
   - Bosch file has 'CR-Status_Bosch_SDV0.1' = '100' or '31' (with or without trailing comma)
   - Customer file has a different 'CR-Status_Bosch_SDV0.1' value
-- **Finding Trigger**: Attempt to overwrite protected Bosch status (100 or 31)
+- **Finding Trigger**: Attempt to overwrite protected Bosch status (100 or 31) for the *same CR-ID*
 - **Erklärung**:
   - Wenn der CR-ID vorhanden ist, und bei Bosch CR-Status 31 oder 100 ist,
   - dann darf der CR-Status nicht mit neuem CR-Status überschrieben werden
 - **Report Format**:
   ```
   Object ID: [object_id]
-  CR-ID_Bosch_SDV0.1: [cr_id]
   ---------------
   Customer File Name: [filename]
+  Customer CR-ID_Bosch_SDV0.1: [value]
   Customer CR-Status_Bosch_SDV0.1: [value]
   ---------------
   Bosch File Name: [filename]
+  Bosch CR-ID_Bosch_SDV0.1: [value]
   Bosch CR-Status_Bosch_SDV0.1: [value]
   ---------------
   Note: Bosch CR-Status '100' or '31' must not be overwritten.
