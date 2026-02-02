@@ -146,8 +146,7 @@ class ProjectCheckerSDV01:
     def check_missing_release_for_verworfen_status(df: pd.DataFrame, file_path: str) -> list[dict]:
         """
         Checks rows where:
-        - 'Object ID' is filled
-        - 'BRS_Status_Hersteller_Bosch_SDV0.1' == 'verworfen'
+        - 'BRS_Status_Hersteller_Bosch_SDV0.1' != 'verworfen'
         - and at least one of 'EntfallRelease' or 'ErsteinsatzRelease' is empty.
 
         A finding is created listing which release attributes are empty.
@@ -172,10 +171,7 @@ class ProjectCheckerSDV01:
         for index, row in df.iterrows():
             object_id = row['Object ID']
             brs_status_raw = row['BRS_Status_Hersteller_Bosch_SDV0.1']
-
-            # Only consider rows with filled Object ID
-            if pd.isna(object_id) or str(object_id).strip() == "":
-                continue
+            object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
 
             # Normalize BRS status
             if pd.isna(brs_status_raw) or str(brs_status_raw).strip() == "":
@@ -183,7 +179,8 @@ class ProjectCheckerSDV01:
             else:
                 brs_status_norm = str(brs_status_raw).strip().rstrip(',')
 
-            if brs_status_norm != "verworfen":
+            # Only apply when status is NOT 'verworfen'
+            if brs_status_norm == "verworfen":
                 continue
 
             entfall = row['EntfallRelease']
@@ -203,15 +200,14 @@ class ProjectCheckerSDV01:
             findings.append({
                 'Row': index + 2,
                 'Check Number': 'Nr.3',
-                'Object ID': str(object_id),
+                'Object ID': object_id_str,
                 'Attribute': ', '.join(missing_attrs),
                 'Issue': (
                     f"{', '.join(missing_attrs)} is empty while "
-                    "'Object ID' is filled and "
-                    "'BRS_Status_Hersteller_Bosch_SDV0.1' is 'verworfen'."
+                    "'BRS_Status_Hersteller_Bosch_SDV0.1' is not 'verworfen'."
                 ),
                 'Value': (
-                    f"Object ID: {object_id}\n"
+                    f"Object ID: {object_id_str}\n"
                     f"Typ: {typ_str}\n"
                     f"\n"
                     f"---------------\n"
