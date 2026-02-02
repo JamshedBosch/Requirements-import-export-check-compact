@@ -158,6 +158,7 @@ class ProjectCheckerSDV01:
             'BRS_Status_Hersteller_Bosch_SDV0.1',
             'EntfallRelease',
             'ErsteinsatzRelease',
+            'Typ',
         ]
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
@@ -172,6 +173,12 @@ class ProjectCheckerSDV01:
             object_id = row['Object ID']
             brs_status_raw = row['BRS_Status_Hersteller_Bosch_SDV0.1']
             object_id_str = 'Empty' if pd.isna(object_id) or str(object_id).strip() == '' else str(object_id)
+
+            # Only check requirements (Typ == 'Anforderung', comma-insensitive)
+            typ_value_raw = row.get('Typ', None)
+            typ_value_norm = "" if pd.isna(typ_value_raw) else str(typ_value_raw).strip().rstrip(',')
+            if typ_value_norm != 'Anforderung':
+                continue
 
             # Normalize BRS status
             if pd.isna(brs_status_raw) or str(brs_status_raw).strip() == "":
@@ -195,8 +202,7 @@ class ProjectCheckerSDV01:
             if not missing_attrs:
                 continue
 
-            typ_value = row.get('Typ', None)
-            typ_str = 'Empty' if pd.isna(typ_value) or str(typ_value).strip() == '' else str(typ_value).rstrip(',')
+            typ_str = typ_value_norm
             findings.append({
                 'Row': index + 2,
                 'Check Number': 'Nr.3',
