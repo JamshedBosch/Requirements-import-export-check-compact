@@ -93,11 +93,13 @@ class ProjectCheckerSSP:
                 object_text_str = HelperFunctions.normalize_symbols(object_text_str)
                 compare_text_str = HelperFunctions.normalize_symbols(compare_text_str)
 
+                # Clean OLE Object artifacts before strict normalization
+                cleaned_object_text = HelperFunctions.clean_ole_object_text(object_text_str)
+                cleaned_compare_text = HelperFunctions.clean_ole_object_text(compare_text_str)
+
                 # Normalize both object_text and compare_text
-                normalized_object_text = HelperFunctions.normalize_text(
-                    object_text_str)
-                normalized_compare_text = HelperFunctions.normalize_text(
-                    compare_text_str)
+                normalized_object_text = HelperFunctions.normalize_text(cleaned_object_text)
+                normalized_compare_text = HelperFunctions.normalize_text(cleaned_compare_text)
                 if normalized_object_text != normalized_compare_text:
                     # Strip any trailing comma from oem_status for comparison
                     oem_status_clean = oem_status.rstrip(',')
@@ -585,9 +587,13 @@ class ProjectCheckerSSP:
                 reqif_text_str = HelperFunctions.normalize_symbols(reqif_text_str)
                 compare_text_str = HelperFunctions.normalize_symbols(compare_text_str)
 
+                # Clean OLE Object artifacts before strict normalization
+                cleaned_reqif_text = HelperFunctions.clean_ole_object_text(reqif_text_str)
+                cleaned_compare_text = HelperFunctions.clean_ole_object_text(compare_text_str)
+
                 # Normalize both texts using the same function as Check Nr. 6
-                normalized_reqif_text = HelperFunctions.normalize_text(reqif_text_str)
-                normalized_compare_text = HelperFunctions.normalize_text(compare_text_str)
+                normalized_reqif_text = HelperFunctions.normalize_text(cleaned_reqif_text)
+                normalized_compare_text = HelperFunctions.normalize_text(cleaned_compare_text)
 
                 if normalized_reqif_text != normalized_compare_text:
                     category_str = 'Empty' if pd.isna(category) or str(category).strip() == '' else str(category).rstrip(',')

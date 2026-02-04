@@ -4,6 +4,7 @@ from typing import Dict, Any, List
 import difflib
 import pandas as pd
 from logger_config import logger
+from HelperFunc import HelperFunctions
 
 
 class ReportGenerator:
@@ -446,26 +447,12 @@ class ReportGenerator:
             }
         ]
 
-        def clean_ole_object_text(text):
-            """Clean text by removing OLE Object references and normalizing spaces."""
-            if not text:
-                return ""
-            # Remove various forms of OLE Object references
-            text = text.replace("OLE Object", "")
-            text = text.replace("DOOLE Object", "DO")
-            # Normalize spaces (replace multiple spaces with single space)
-            text = ' '.join(text.split())
-            # Handle special cases with *) and similar patterns
-            text = text.replace("DO*)", "DO *)")
-            text = text.replace("DO )*", "DO *)")
-            return text.strip()
-
         print("\nTesting OLE Object handling:")
         print("-" * 50)
         
         for case in test_cases:
-            clean_customer = clean_ole_object_text(case['customer_text'])
-            clean_bosch = clean_ole_object_text(case['bosch_text'])
+            clean_customer = HelperFunctions.clean_ole_object_text(case['customer_text'])
+            clean_bosch = HelperFunctions.clean_ole_object_text(case['bosch_text'])
             
             result = "different"
             if not clean_customer:
@@ -545,24 +532,10 @@ class ReportGenerator:
                     })
                     continue
                 
-                # Enhanced OLE Object handling
-                def clean_ole_object_text(text):
-                    """Clean text by removing OLE Object references and normalizing spaces."""
-                    if not text:
-                        return ""
-                    # Remove various forms of OLE Object references
-                    text = text.replace("OLE Object", "")
-                    text = text.replace("DOOLE Object", "DO")
-                    # Normalize spaces (replace multiple spaces with single space)
-                    text = ' '.join(text.split())
-                    # Handle special cases with *) and similar patterns
-                    text = text.replace("DO*)", "DO *)")
-                    text = text.replace("DO )*", "DO *)")
-                    return text.strip()
-
+                # Enhanced OLE Object handling (reusing shared helper)
                 # Clean both texts
-                clean_customer_text = clean_ole_object_text(customer_text)
-                clean_bosch_text = clean_ole_object_text(bosch_text)
+                clean_customer_text = HelperFunctions.clean_ole_object_text(customer_text)
+                clean_bosch_text = HelperFunctions.clean_ole_object_text(bosch_text)
 
                 # Skip if cleaned texts are identical
                 if clean_customer_text == clean_bosch_text:

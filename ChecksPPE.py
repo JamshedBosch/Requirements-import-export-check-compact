@@ -294,11 +294,13 @@ class ProjectCheckerPPE:
             if object_id in compare_dict:
                 compare_text = compare_dict[object_id]
 
+                # Clean OLE Object artifacts before strict normalization
+                cleaned_object_text = HelperFunctions.clean_ole_object_text(object_text)
+                cleaned_compare_text = HelperFunctions.clean_ole_object_text(compare_text)
+
                 # Normalize both object_text and compare_text
-                normalized_object_text = HelperFunctions.normalize_text(
-                    object_text)
-                normalized_compare_text = HelperFunctions.normalize_text(
-                    compare_text)
+                normalized_object_text = HelperFunctions.normalize_text(cleaned_object_text)
+                normalized_compare_text = HelperFunctions.normalize_text(cleaned_compare_text)
                 if normalized_object_text != normalized_compare_text:
                     if brs_status not in ['neu/geändert,']:
                         typ_value = row.get('Typ', None)
@@ -378,11 +380,12 @@ class ProjectCheckerPPE:
             if object_id in compare_dict:
                 # here the compare text is from generated reqif file
                 compare_text = compare_dict[object_id]
+                # Clean OLE Object artifacts before strict normalization
+                cleaned_object_text = HelperFunctions.clean_ole_object_text(object_text)
+                cleaned_compare_text = HelperFunctions.clean_ole_object_text(compare_text)
                 # Normalize both object_text and compare_text
-                normalized_object_text = HelperFunctions.normalize_text(
-                    object_text)
-                normalized_compare_text = HelperFunctions.normalize_text(
-                    compare_text)
+                normalized_object_text = HelperFunctions.normalize_text(cleaned_object_text)
+                normalized_compare_text = HelperFunctions.normalize_text(cleaned_compare_text)
 
                 # If 'Object Text' differs, check 'RB_AS_Status'
                 if normalized_object_text != normalized_compare_text:

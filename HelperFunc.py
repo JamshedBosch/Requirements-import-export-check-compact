@@ -45,6 +45,36 @@ class HelperFunctions:
         return text.strip()
 
     @staticmethod
+    def clean_ole_object_text(text):
+        """
+        Clean text by removing OLE Object references and normalizing spaces.
+
+        This is used before text comparison so that embedded OLE placeholders
+        (e.g. images represented as 'OLE Object') do not count as real wording
+        differences.
+        """
+        # Treat pandas NA / None / empty as empty string
+        if pd.isna(text):
+            return ""
+
+        text_str = str(text)
+        if not text_str:
+            return ""
+
+        # Remove various forms of OLE Object references
+        text_str = text_str.replace("OLE Object", "")
+        text_str = text_str.replace("DOOLE Object", "DO")
+
+        # Normalize spaces (replace multiple spaces with single space)
+        text_str = ' '.join(text_str.split())
+
+        # Handle special cases with *) and similar patterns
+        text_str = text_str.replace("DO*)", "DO *)")
+        text_str = text_str.replace("DO )*", "DO *)")
+
+        return text_str.strip()
+
+    @staticmethod
     def normalize_text_advanced(text):
         """
         Advanced text normalization that removes more characters and converts to lowercase.

@@ -394,8 +394,12 @@ class ProjectCheckerSDV01:
 
             compare_text = compare_dict[object_id]
 
-            normalized_reqif_text = HelperFunctions.normalize_text(reqif_text)
-            normalized_compare_text = HelperFunctions.normalize_text(compare_text)
+            # Clean OLE Object artifacts before strict normalization
+            cleaned_reqif_text = HelperFunctions.clean_ole_object_text(reqif_text)
+            cleaned_compare_text = HelperFunctions.clean_ole_object_text(compare_text)
+
+            normalized_reqif_text = HelperFunctions.normalize_text(cleaned_reqif_text)
+            normalized_compare_text = HelperFunctions.normalize_text(cleaned_compare_text)
 
             if normalized_reqif_text != normalized_compare_text:
                 brs_status_clean = str(brs_status).strip().rstrip(',') if not pd.isna(brs_status) else ""
@@ -486,9 +490,13 @@ class ProjectCheckerSDV01:
 
             customer_text = customer_text_by_id[object_id]
 
+            # Clean OLE Object artifacts before strict normalization
+            cleaned_customer_text = HelperFunctions.clean_ole_object_text(customer_text)
+            cleaned_bosch_text = HelperFunctions.clean_ole_object_text(bosch_text)
+
             # Normalize both texts
-            normalized_customer_text = HelperFunctions.normalize_text(customer_text)
-            normalized_bosch_text = HelperFunctions.normalize_text(bosch_text)
+            normalized_customer_text = HelperFunctions.normalize_text(cleaned_customer_text)
+            normalized_bosch_text = HelperFunctions.normalize_text(cleaned_bosch_text)
 
             if normalized_customer_text != normalized_bosch_text:
                 # Only problematic when RB_AS_Status is in one of these values
