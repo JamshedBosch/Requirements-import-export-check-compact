@@ -603,7 +603,51 @@ class ReportGenerator:
                 
         except Exception as e:
             logger.error(f"Error generating translation TSV: {str(e)}", exc_info=True)
-            raise
+            return None
+
+    @staticmethod
+    def generate_rb_update_tsv(file_path, report_folder, findings):
+        """Generate a TSV file listing Object IDs where an RB update was detected (Check Nr.11)."""
+        try:
+            if not findings:
+                return None
+
+            base_name = os.path.basename(file_path).replace('.xlsx', '')
+            tsv_file = os.path.join(report_folder, f"{base_name}_rb_update.tsv")
+
+            rows = []
+            seen_ids = set()
+
+            for finding in findings:
+                object_id = finding.get('Object ID')
+                if not object_id:
+                    # Try to parse Object ID from the Value field if missing
+                    value = finding.get('Value', '')
+                    for line in str(value).split('\n'):
+                        if line.strip().startswith("Object ID:"):
+                            object_id = line.split(":", 1)[1].strip()
+                            break
+
+                if not object_id or object_id in seen_ids:
+                    continue
+
+                seen_ids.add(object_id)
+                rows.append({
+                    'Object ID': object_id,
+                    'RB_update-detected': 'Yes',
+                })
+
+            if not rows:
+                logger.info("No valid Object IDs found for RB update TSV; file will not be created.")
+                return None
+
+            df = pd.DataFrame(rows)
+            df.to_csv(tsv_file, sep='\t', index=False, encoding='utf-8')
+            logger.info(f"RB update TSV generated: {tsv_file}")
+            return tsv_file
+        except Exception as e:
+            logger.error(f"Error generating RB update TSV: {str(e)}", exc_info=True)
+            return None
 
     @staticmethod
     def generate_report(file_path, report_folder, report_type, findings):
@@ -631,6 +675,17 @@ class ReportGenerator:
                 translation_tsv = ReportGenerator.generate_translation_tsv(file_path, report_folder, translation_findings)
                 if translation_tsv:
                     report_files.append(translation_tsv)
+
+            # Generate RB update TSV only for Check Nr. 11 findings
+            rb_update_findings = [
+                finding for finding in findings
+                if finding.get('Check Number') == 'Nr.11'
+            ]
+
+            if rb_update_findings:
+                rb_update_tsv = ReportGenerator.generate_rb_update_tsv(file_path, report_folder, rb_update_findings)
+                if rb_update_tsv:
+                    report_files.append(rb_update_tsv)
             
             logger.info(f"Successfully generated reports: {report_files}")
             return report_files

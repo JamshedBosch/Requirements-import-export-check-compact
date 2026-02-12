@@ -188,6 +188,10 @@ class ChecksProcessor:
                     #check 10
                     findings += ProjectCheckerSSP.check_text_differences_without_status_validation(
                         df, self.compare_df, file_path, self.compare_file)
+                    
+                    #check 11
+                    findings += ProjectCheckerSSP.check_rb_update_for_changed_requirements(
+                        df, self.compare_df, file_path, self.compare_file)
             else:
                 # Export check BOSCH ==> AUDI
                 print("[SSP] NO EXPORT CHECKS DEFINED SOFAR")

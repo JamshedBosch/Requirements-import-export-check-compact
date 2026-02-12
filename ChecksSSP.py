@@ -622,3 +622,203 @@ class ProjectCheckerSSP:
 
         logger.info(f"Completed text comparison check. Found {len(findings)} differences.")
         return findings
+
+    # Check Nr.11
+    @staticmethod
+    def check_rb_update_for_changed_requirements(df, compare_df, file_path, compare_file_path):
+        """
+        Check Nr.11: Detects RB updates when key attributes differ between customer and Bosch files.
+
+        Compares, per Object ID:
+        - 'ReqIF.Text' (Customer) vs 'Object Text' (Bosch)
+        - 'English_Translation' (Customer) vs 'Object Text English' (Bosch)
+        - 'Typ' (Customer) vs 'Typ' (Bosch)
+
+        If any of these attributes differ for a given Object ID, a finding is created.
+        These findings are later used to generate a TSV file listing affected Object IDs
+        with a column 'RB_update-detected' set to 'Yes'.
+
+        Hinweis: Beim Vergleich des Objekttexts werden Leerzeichen, Semikolons,
+        einfache Anführungszeichen und doppelte Anführungszeichen ignoriert
+        (über HelperFunctions.normalize_text).
+        """
+        findings = []
+
+        # This check is defined for Object Identifier based comparison (LAH vs DOORS export)
+        # Always require 'Object Identifier' in both files; other attributes are checked flexibly.
+        required_customer_cols = ['Object Identifier']
+        required_bosch_cols = ['Object Identifier']
+
+        missing_customer = [c for c in required_customer_cols if c not in df.columns]
+        missing_bosch = [c for c in required_bosch_cols if c not in compare_df.columns]
+
+        check_name = __class__.check_rb_update_for_changed_requirements.__name__
+        if missing_customer:
+            logger.warning(
+                f"Missing required columns in the customer DataFrame: {missing_customer}, "
+                f"in File: {file_path}.\nSkipping check: {check_name}"
+            )
+            return findings
+
+        if missing_bosch:
+            logger.warning(
+                f"Missing required columns in the Bosch file: {missing_bosch}, "
+                f"in File: {compare_file_path}.\nSkipping check: {check_name}"
+            )
+            return findings
+
+        # Determine which attributes are available for flexible comparison
+        reqif_enabled = 'ReqIF.Text' in df.columns and 'Object Text' in compare_df.columns
+        # Compare Object Text English (Bosch) with English_Translation (Customer)
+        eng_enabled = 'English_Translation' in df.columns and 'Object Text English' in compare_df.columns
+
+        # Typ can be provided as 'Typ' or 'Type' on the customer side; Bosch side must have 'Typ'
+        customer_has_typ = 'Typ' in df.columns
+        customer_has_type = 'Type' in df.columns
+        bosch_has_typ = 'Typ' in compare_df.columns
+        typ_enabled = bosch_has_typ and (customer_has_typ or customer_has_type)
+
+        if not (reqif_enabled or eng_enabled or typ_enabled):
+            logger.warning(
+                f"No comparable attributes (ReqIF.Text/Object Text, Object Text English, Typ/Type) "
+                f"found for Check Nr.11 in files: {file_path} and {compare_file_path}. Skipping check."
+            )
+            return findings
+
+        # Build quick lookup for Bosch rows by Object Identifier
+        bosch_rows_by_id = {}
+        for _, ref_row in compare_df.iterrows():
+            ref_object_id = ref_row.get('Object Identifier', None)
+            if pd.isna(ref_object_id) or str(ref_object_id).strip() == "":
+                continue
+            bosch_rows_by_id.setdefault(str(ref_object_id), []).append(ref_row)
+
+        seen_object_ids = set()
+
+        for index, row in df.iterrows():
+            object_id = row.get('Object Identifier', None)
+            if pd.isna(object_id) or str(object_id).strip() == "":
+                continue
+
+            object_id_str = str(object_id)
+
+            if object_id_str not in bosch_rows_by_id:
+                continue
+
+            # Read customer attributes only if enabled / available
+            customer_reqif = row.get('ReqIF.Text', None) if reqif_enabled else None
+            # For English, use 'English_Translation' on customer side
+            customer_eng = row.get('English_Translation', None) if eng_enabled else None
+
+            # Determine customer "Typ" normalization, with fallback to 'Type' mapping
+            customer_typ_norm = ""
+            if typ_enabled:
+                raw_typ = None
+                if customer_has_typ:
+                    raw_typ = row.get('Typ', None)
+                    customer_typ_norm = "" if pd.isna(raw_typ) else str(raw_typ).rstrip(',').strip()
+                elif customer_has_type:
+                    raw_typ = row.get('Type', None)
+                    # Map Type values to Typ semantics
+                    type_str = "" if pd.isna(raw_typ) else str(raw_typ).rstrip(',').strip()
+                    type_mapping = {
+                        'Folder': 'Überschrift',
+                        'Information': 'Information',
+                        'Requiremet': 'Anforderung',
+                    }
+                    customer_typ_norm = type_mapping.get(type_str, type_str)
+
+            # Flags for differences
+            reqif_diff = False
+            eng_diff = False
+            typ_diff = False
+
+            # Compare against each Bosch row with same Object ID; one match is enough
+            for ref_row in bosch_rows_by_id[object_id_str]:
+                bosch_text = ref_row.get('Object Text', None) if reqif_enabled else None
+                # For English, use 'Object Text English' on Bosch side
+                bosch_eng = ref_row.get('Object Text English', None) if eng_enabled else None
+                bosch_typ = ref_row.get('Typ', None) if typ_enabled else None
+
+                # --- ReqIF.Text vs Object Text ---
+                if reqif_enabled:
+                    customer_reqif_str = "" if pd.isna(customer_reqif) else str(customer_reqif).strip()
+                    bosch_text_str = "" if pd.isna(bosch_text) else str(bosch_text).strip()
+
+                    # Clean and normalize for comparison (ignore spaces, quotes, semicolons, etc.)
+                    cleaned_reqif = HelperFunctions.clean_ole_object_text(customer_reqif_str)
+                    cleaned_bosch_text = HelperFunctions.clean_ole_object_text(bosch_text_str)
+                    norm_reqif = HelperFunctions.normalize_text(cleaned_reqif)
+                    norm_bosch_text = HelperFunctions.normalize_text(cleaned_bosch_text)
+                    if norm_reqif != norm_bosch_text:
+                        reqif_diff = True
+
+                # --- Object Text English ---
+                if eng_enabled:
+                    customer_eng_str = "" if pd.isna(customer_eng) else str(customer_eng).strip()
+                    bosch_eng_str = "" if pd.isna(bosch_eng) else str(bosch_eng).strip()
+
+                    cleaned_eng_customer = HelperFunctions.clean_ole_object_text(customer_eng_str)
+                    cleaned_eng_bosch = HelperFunctions.clean_ole_object_text(bosch_eng_str)
+                    norm_eng_customer = HelperFunctions.normalize_text(cleaned_eng_customer)
+                    norm_eng_bosch = HelperFunctions.normalize_text(cleaned_eng_bosch)
+                    if norm_eng_customer != norm_eng_bosch:
+                        eng_diff = True
+
+                # --- Typ ---
+                if typ_enabled:
+                    bosch_typ_norm = "" if pd.isna(bosch_typ) else str(bosch_typ).rstrip(',').strip()
+                    if customer_typ_norm != bosch_typ_norm:
+                        typ_diff = True
+
+                if reqif_diff or eng_diff or typ_diff:
+                    break  # One differing Bosch row is enough
+
+            if not (reqif_diff or eng_diff or typ_diff):
+                continue
+
+            # Avoid duplicate findings per Object Identifier
+            if object_id_str in seen_object_ids:
+                continue
+            seen_object_ids.add(object_id_str)
+
+            changed_attrs = []
+            if reqif_diff:
+                changed_attrs.append("ReqIF.Text/Object Text")
+            if eng_diff:
+                changed_attrs.append("Object Text English")
+            if typ_diff:
+                changed_attrs.append("Typ")
+
+            changed_attrs_str = ", ".join(changed_attrs)
+
+            findings.append({
+                'Row': index + 2,  # Excel-style row number
+                'Check Number': 'Nr.11',
+                'Object ID': object_id_str,
+                'Attribute': changed_attrs_str,
+                'Issue': (
+                    "For the same Object Identifier, at least one of the following attributes differs "
+                    "between the Customer file and the Bosch file: Original text (ReqIF.Text vs Object Text), "
+                    "English text (English_Translation vs Object Text English), or Typ."
+                ),
+                'Value': (
+                    f"Object Identifier: {object_id_str}\n"
+                    f"\n"
+                    f"---------------\n"
+                    f"       Customer File Name: {os.path.basename(file_path)}\n"
+                    f"       Customer ReqIF.Text: {customer_reqif if reqif_enabled and not pd.isna(customer_reqif) else 'Empty'}\n"
+                    f"       Customer Object Text English: {customer_eng if eng_enabled and not pd.isna(customer_eng) else 'Empty'}\n"
+                    f"       Customer Typ: {customer_typ_norm or 'Empty'}\n"
+                    f"---------------\n"
+                    f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
+                    f"       Bosch Object Text: {bosch_text_str if reqif_enabled and 'bosch_text_str' in locals() and bosch_text_str else 'Empty'}\n"
+                    f"       Bosch Object Text English: {bosch_eng_str if eng_enabled and 'bosch_eng_str' in locals() and bosch_eng_str else 'Empty'}\n"
+                    f"       Bosch Typ: {bosch_typ_norm if typ_enabled else 'Empty'}\n"
+                    f"---------------\n"
+                    f"       RB_update-detected: Yes"
+                )
+            })
+
+        logger.info(f"Completed RB update check (Nr.11). Found {len(findings)} affected requirements.")
+        return findings
