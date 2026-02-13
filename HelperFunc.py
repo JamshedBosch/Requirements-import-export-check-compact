@@ -145,9 +145,10 @@ class HelperFunctions:
         # Dictionary of symbol replacements
         # Add new symbol replacements here as needed
         symbol_replacements = {
-            'σ': 's',  # Sigma
-            'Δ': '?',  # Delta
-            'Ω': '?',  # Omega
+            'σ': 's',   # Sigma
+            'Δ': '?',   # Delta
+            'Ω': '?',   # Omega
+            '→': '?',   # Arrow treated like question mark for comparison
         }
         
         # Replace each symbol with its ASCII equivalent

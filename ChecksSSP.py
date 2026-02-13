@@ -724,7 +724,7 @@ class ProjectCheckerSSP:
                     type_mapping = {
                         'Folder': 'Überschrift',
                         'Information': 'Information',
-                        'Requiremet': 'Anforderung',
+                        'Requirement': 'Anforderung',
                     }
                     customer_typ_norm = type_mapping.get(type_str, type_str)
 
@@ -745,7 +745,9 @@ class ProjectCheckerSSP:
                     customer_reqif_str = "" if pd.isna(customer_reqif) else str(customer_reqif).strip()
                     bosch_text_str = "" if pd.isna(bosch_text) else str(bosch_text).strip()
 
-                    # Clean and normalize for comparison (ignore spaces, quotes, semicolons, etc.)
+                    # Normalize special symbols, then clean and normalize for comparison
+                    customer_reqif_str = HelperFunctions.normalize_symbols(customer_reqif_str)
+                    bosch_text_str = HelperFunctions.normalize_symbols(bosch_text_str)
                     cleaned_reqif = HelperFunctions.clean_ole_object_text(customer_reqif_str)
                     cleaned_bosch_text = HelperFunctions.clean_ole_object_text(bosch_text_str)
                     norm_reqif = HelperFunctions.normalize_text(cleaned_reqif)
@@ -758,6 +760,8 @@ class ProjectCheckerSSP:
                     customer_eng_str = "" if pd.isna(customer_eng) else str(customer_eng).strip()
                     bosch_eng_str = "" if pd.isna(bosch_eng) else str(bosch_eng).strip()
 
+                    customer_eng_str = HelperFunctions.normalize_symbols(customer_eng_str)
+                    bosch_eng_str = HelperFunctions.normalize_symbols(bosch_eng_str)
                     cleaned_eng_customer = HelperFunctions.clean_ole_object_text(customer_eng_str)
                     cleaned_eng_bosch = HelperFunctions.clean_ole_object_text(bosch_eng_str)
                     norm_eng_customer = HelperFunctions.normalize_text(cleaned_eng_customer)

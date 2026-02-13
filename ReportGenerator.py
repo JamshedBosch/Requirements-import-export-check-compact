@@ -278,12 +278,16 @@ class ReportGenerator:
         bosch_text = ""
 
         for i, line in enumerate(value_lines):
+            # Primary pair used by most checks
             if "Customer File Object Text:" in line:
-                customer_text = line.replace("Customer File Object Text:",
-                                             "").strip()
+                customer_text = line.replace("Customer File Object Text:", "").strip()
             elif "Bosch File Object Text:" in line:
-                bosch_text = line.replace("Bosch File Object Text:",
-                                          "").strip()
+                bosch_text = line.replace("Bosch File Object Text:", "").strip()
+            # Fallback for checks that use ReqIF.Text / Object Text wording (e.g. SSP Check Nr.11)
+            elif "Customer ReqIF.Text:" in line and not customer_text:
+                customer_text = line.replace("Customer ReqIF.Text:", "").strip()
+            elif "Bosch Object Text:" in line and not bosch_text:
+                bosch_text = line.replace("Bosch Object Text:", "").strip()
 
         # Convert None values to empty strings (if needed)
         customer_text = customer_text if customer_text else ""
@@ -296,11 +300,14 @@ class ReportGenerator:
         # Replace the original texts in value_lines with highlighted versions
         for i, line in enumerate(value_lines):
             if "Customer File Object Text:" in line:
-                value_lines[
-                    i] = f"       Customer File Object Text: {highlighted_customer}"
+                value_lines[i] = f"       Customer File Object Text: {highlighted_customer}"
             elif "Bosch File Object Text:" in line:
-                value_lines[
-                    i] = f"       Bosch File Object Text: {highlighted_bosch}"
+                value_lines[i] = f"       Bosch File Object Text: {highlighted_bosch}"
+            # Also support highlighting for ReqIF.Text / Object Text lines (e.g. SSP Check Nr.11)
+            elif "Customer ReqIF.Text:" in line and customer_text:
+                value_lines[i] = f"       Customer ReqIF.Text: {highlighted_customer}"
+            elif "Bosch Object Text:" in line and bosch_text:
+                value_lines[i] = f"       Bosch Object Text: {highlighted_bosch}"
             # Replace "nan" with "Empty" for better readability
             elif "nan" in line.lower():
                 value_lines[i] = line.replace("nan", "Empty").replace("NaN", "Empty")
