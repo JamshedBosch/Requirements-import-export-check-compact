@@ -27,7 +27,18 @@ class HelperFunctions:
 
         # Remove all whitespace (spaces, tabs, newlines, non-breaking spaces, etc.)
         text = re.sub(r'\s+', '', text, flags=re.UNICODE)
-        text = text.replace('\u00A0', '')  # Remove non-breaking space if present as unicode
+        text = text.replace('\u00A0', '')  # Non-breaking space
+
+        # Remove invisible / zero-width Unicode characters that \s+ does not match
+        # but which can appear in exported documents and cause false differences:
+        #   \u00AD  Soft hyphen
+        #   \u200B  Zero-width space
+        #   \u200C  Zero-width non-joiner
+        #   \u200D  Zero-width joiner
+        #   \u200E  Left-to-right mark
+        #   \u200F  Right-to-left mark
+        #   \uFEFF  BOM / Zero-width no-break space
+        text = re.sub(r'[\u00AD\u200B-\u200F\uFEFF]', '', text)
 
         # Remove semicolons (if you want to ignore them as well)
         text = text.replace(';', '')
@@ -52,6 +63,11 @@ class HelperFunctions:
         This is used before text comparison so that embedded OLE placeholders
         (e.g. images represented as 'OLE Object') do not count as real wording
         differences.
+
+        Also removes tool-generated error/import-failure messages for embedded
+        objects that appear in different forms across files, e.g.:
+          - <<ERROR: embedded object file '...' does not exist>>
+          - <OR: embedded object '...' could not be imported>>
         """
         # Treat pandas NA / None / empty as empty string
         if pd.isna(text):
@@ -64,6 +80,12 @@ class HelperFunctions:
         # Remove various forms of OLE Object references
         text_str = text_str.replace("OLE Object", "")
         text_str = text_str.replace("DOOLE Object", "DO")
+
+        # Remove tool-generated embedded-object error/import-failure placeholders.
+        # These appear when an image cannot be rendered as text and take forms like:
+        #   <<ERROR: embedded object file '...' does not exist>>
+        #   <OR: embedded object '...' could not be imported>>
+        text_str = re.sub(r'<{1,2}(?:ERROR|OR):[^>]*>{1,2}', '', text_str)
 
         # Normalize spaces (replace multiple spaces with single space)
         text_str = ' '.join(text_str.split())
