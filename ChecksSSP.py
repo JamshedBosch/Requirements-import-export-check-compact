@@ -644,10 +644,10 @@ class ProjectCheckerSSP:
         """
         findings = []
 
-        # This check is defined for Object Identifier based comparison (LAH vs DOORS export)
-        # Always require 'Object Identifier' in both files; other attributes are checked flexibly.
-        required_customer_cols = ['Object Identifier']
-        required_bosch_cols = ['Object Identifier']
+        # This check is defined for Object ID based comparison (LAH vs DOORS export)
+        # Always require 'Object ID' in both files; other attributes are checked flexibly.
+        required_customer_cols = ['Object ID']
+        required_bosch_cols = ['Object ID']
 
         missing_customer = [c for c in required_customer_cols if c not in df.columns]
         missing_bosch = [c for c in required_bosch_cols if c not in compare_df.columns]
@@ -685,10 +685,10 @@ class ProjectCheckerSSP:
             )
             return findings
 
-        # Build quick lookup for Bosch rows by Object Identifier
+        # Build quick lookup for Bosch rows by Object ID
         bosch_rows_by_id = {}
         for _, ref_row in compare_df.iterrows():
-            ref_object_id = ref_row.get('Object Identifier', None)
+            ref_object_id = ref_row.get('Object ID', None)
             if pd.isna(ref_object_id) or str(ref_object_id).strip() == "":
                 continue
             bosch_rows_by_id.setdefault(str(ref_object_id), []).append(ref_row)
@@ -696,7 +696,7 @@ class ProjectCheckerSSP:
         seen_object_ids = set()
 
         for index, row in df.iterrows():
-            object_id = row.get('Object Identifier', None)
+            object_id = row.get('Object ID', None)
             if pd.isna(object_id) or str(object_id).strip() == "":
                 continue
 
@@ -750,8 +750,8 @@ class ProjectCheckerSSP:
                     bosch_text_str = HelperFunctions.normalize_symbols(bosch_text_str)
                     cleaned_reqif = HelperFunctions.clean_ole_object_text(customer_reqif_str)
                     cleaned_bosch_text = HelperFunctions.clean_ole_object_text(bosch_text_str)
-                    norm_reqif = HelperFunctions.normalize_text(cleaned_reqif)
-                    norm_bosch_text = HelperFunctions.normalize_text(cleaned_bosch_text)
+                    norm_reqif = HelperFunctions.normalize_text(cleaned_reqif).replace('-', '').lower()
+                    norm_bosch_text = HelperFunctions.normalize_text(cleaned_bosch_text).replace('-', '').lower()
                     if norm_reqif != norm_bosch_text:
                         reqif_diff = True
 
@@ -764,8 +764,8 @@ class ProjectCheckerSSP:
                     bosch_eng_str = HelperFunctions.normalize_symbols(bosch_eng_str)
                     cleaned_eng_customer = HelperFunctions.clean_ole_object_text(customer_eng_str)
                     cleaned_eng_bosch = HelperFunctions.clean_ole_object_text(bosch_eng_str)
-                    norm_eng_customer = HelperFunctions.normalize_text(cleaned_eng_customer)
-                    norm_eng_bosch = HelperFunctions.normalize_text(cleaned_eng_bosch)
+                    norm_eng_customer = HelperFunctions.normalize_text(cleaned_eng_customer).replace('-', '').lower()
+                    norm_eng_bosch = HelperFunctions.normalize_text(cleaned_eng_bosch).replace('-', '').lower()
                     if norm_eng_customer != norm_eng_bosch:
                         eng_diff = True
 
@@ -781,7 +781,7 @@ class ProjectCheckerSSP:
             if not (reqif_diff or eng_diff or typ_diff):
                 continue
 
-            # Avoid duplicate findings per Object Identifier
+            # Avoid duplicate findings per Object ID
             if object_id_str in seen_object_ids:
                 continue
             seen_object_ids.add(object_id_str)
@@ -802,12 +802,12 @@ class ProjectCheckerSSP:
                 'Object ID': object_id_str,
                 'Attribute': changed_attrs_str,
                 'Issue': (
-                    "For the same Object Identifier, at least one of the following attributes differs "
+                    "For the same Object ID, at least one of the following attributes differs "
                     "between the Customer file and the Bosch file: Original text (ReqIF.Text vs Object Text), "
                     "English text (English_Translation vs Object Text English), or Typ."
                 ),
                 'Value': (
-                    f"Object Identifier: {object_id_str}\n"
+                    f"Object ID: {object_id_str}\n"
                     f"\n"
                     f"---------------\n"
                     f"       Customer File Name: {os.path.basename(file_path)}\n"

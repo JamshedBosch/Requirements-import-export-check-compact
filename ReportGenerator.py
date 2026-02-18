@@ -1,4 +1,5 @@
 from datetime import datetime
+import html
 import os
 from typing import Dict, Any, List
 import difflib
@@ -158,28 +159,28 @@ class ReportGenerator:
 
         # If one of the texts is empty, highlight the other entirely
         if text1 and not text2:
-            return f'<span class="diff-del">{text1}</span>', '<span class="diff-add">Empty</span>'
+            return f'<span class="diff-del">{html.escape(text1)}</span>', '<span class="diff-add">Empty</span>'
         if text2 and not text1:
-            return '<span class="diff-del">Empty</span>', f'<span class="diff-add">{text2}</span>'
+            return '<span class="diff-del">Empty</span>', f'<span class="diff-add">{html.escape(text2)}</span>'
 
         # If texts are identical after normalization, return them without highlighting
         if text1 == text2:
-            return text1, text2
+            return html.escape(text1), html.escape(text2)
 
         matcher = difflib.SequenceMatcher(None, text1, text2)
         result1, result2 = [], []
 
         for op, i1, i2, j1, j2 in matcher.get_opcodes():
             if op == 'equal':
-                result1.append(text1[i1:i2])
-                result2.append(text2[j1:j2])
+                result1.append(html.escape(text1[i1:i2]))
+                result2.append(html.escape(text2[j1:j2]))
             elif op == 'replace':
-                result1.append(f'<span class="diff-del">{text1[i1:i2]}</span>')
-                result2.append(f'<span class="diff-add">{text2[j1:j2]}</span>')
+                result1.append(f'<span class="diff-del">{html.escape(text1[i1:i2])}</span>')
+                result2.append(f'<span class="diff-add">{html.escape(text2[j1:j2])}</span>')
             elif op == 'insert':
-                result2.append(f'<span class="diff-add">{text2[j1:j2]}</span>')
+                result2.append(f'<span class="diff-add">{html.escape(text2[j1:j2])}</span>')
             elif op == 'delete':
-                result1.append(f'<span class="diff-del">{text1[i1:i2]}</span>')
+                result1.append(f'<span class="diff-del">{html.escape(text1[i1:i2])}</span>')
 
         return ''.join(result1), ''.join(result2)
 
@@ -297,7 +298,10 @@ class ReportGenerator:
         highlighted_customer, highlighted_bosch = ReportGenerator.highlight_differences(
             customer_text, bosch_text)
 
-        # Replace the original texts in value_lines with highlighted versions
+        # Replace the original texts in value_lines with highlighted versions.
+        # Lines that receive highlighted HTML are left as-is (already safe).
+        # All other lines are HTML-escaped so that characters like < and > in
+        # raw text values (e.g. "<OR: embedded object ...>") cannot break the HTML.
         for i, line in enumerate(value_lines):
             if "Customer File Object Text:" in line:
                 value_lines[i] = f"       Customer File Object Text: {highlighted_customer}"
@@ -308,9 +312,11 @@ class ReportGenerator:
                 value_lines[i] = f"       Customer ReqIF.Text: {highlighted_customer}"
             elif "Bosch Object Text:" in line and bosch_text:
                 value_lines[i] = f"       Bosch Object Text: {highlighted_bosch}"
-            # Replace "nan" with "Empty" for better readability
+            # Replace "nan" with "Empty" for better readability, then escape
             elif "nan" in line.lower():
-                value_lines[i] = line.replace("nan", "Empty").replace("NaN", "Empty")
+                value_lines[i] = html.escape(line.replace("nan", "Empty").replace("NaN", "Empty"))
+            else:
+                value_lines[i] = html.escape(line)
 
         formatted_value = "<br>".join(value_lines)
 
