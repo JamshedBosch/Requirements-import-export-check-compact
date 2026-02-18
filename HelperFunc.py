@@ -40,8 +40,13 @@ class HelperFunctions:
         #   \uFEFF  BOM / Zero-width no-break space
         text = re.sub(r'[\u00AD\u200B-\u200F\uFEFF]', '', text)
 
-        # Remove semicolons (if you want to ignore them as well)
+        # Remove semicolons
         text = text.replace(';', '')
+
+        # Remove question marks — they appear as encoding artifacts in Bosch DOORS
+        # exports when a special character (e.g. →, non-breaking space) cannot be
+        # encoded, so a lone '?' between words should not trigger a finding.
+        text = text.replace('?', '')
 
         # Remove other formatting characters if needed (dashes, etc.)
         # text = text.replace('-', '')  # Uncomment if you want to ignore dashes too
@@ -171,6 +176,7 @@ class HelperFunctions:
             'Δ': '?',   # Delta
             'Ω': '?',   # Omega
             '→': '?',   # Arrow treated like question mark for comparison
+            '◊': '?',   # Lozenge / diamond operator (DOORS exports this as '?')
         }
         
         # Replace each symbol with its ASCII equivalent
