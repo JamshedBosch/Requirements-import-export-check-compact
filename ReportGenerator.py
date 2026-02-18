@@ -117,6 +117,30 @@ class ReportGenerator:
                """
 
     @staticmethod
+    def highlight_value_difference(val1: str, val2: str) -> tuple[str, str]:
+        """
+        Highlight two discrete values (e.g. Typ) as a whole when they differ.
+        Instead of character-level diffing, the entire value is coloured red (val1)
+        or green (val2) when they are not equal.  If they are equal, both are
+        returned unescaped (identical).
+        """
+        val1 = val1.strip()
+        val2 = val2.strip()
+
+        if val1 == val2:
+            return html.escape(val1), html.escape(val2)
+
+        if val1 and not val2:
+            return f'<span class="diff-del">{html.escape(val1)}</span>', '<span class="diff-add">Empty</span>'
+        if val2 and not val1:
+            return '<span class="diff-del">Empty</span>', f'<span class="diff-add">{html.escape(val2)}</span>'
+
+        return (
+            f'<span class="diff-del">{html.escape(val1)}</span>',
+            f'<span class="diff-add">{html.escape(val2)}</span>',
+        )
+
+    @staticmethod
     def highlight_differences(text1: str, text2: str) -> tuple[str, str]:
         """
         Highlight the differences between two texts using HTML spans.
@@ -290,6 +314,15 @@ class ReportGenerator:
             elif "Bosch Object Text:" in line and not bosch_text:
                 bosch_text = line.replace("Bosch Object Text:", "").strip()
 
+        # Also extract Typ values for highlighting
+        customer_typ = ""
+        bosch_typ = ""
+        for line in value_lines:
+            if "Customer Typ:" in line:
+                customer_typ = line.replace("Customer Typ:", "").strip()
+            elif "Bosch Typ:" in line:
+                bosch_typ = line.replace("Bosch Typ:", "").strip()
+
         # Convert None values to empty strings (if needed)
         customer_text = customer_text if customer_text else ""
         bosch_text = bosch_text if bosch_text else ""
@@ -297,6 +330,12 @@ class ReportGenerator:
         # Ensure highlight_differences is always called
         highlighted_customer, highlighted_bosch = ReportGenerator.highlight_differences(
             customer_text, bosch_text)
+
+        # Highlight Typ differences when both values are present (whole-value, not char-level)
+        highlighted_customer_typ, highlighted_bosch_typ = ("", "")
+        if customer_typ or bosch_typ:
+            highlighted_customer_typ, highlighted_bosch_typ = ReportGenerator.highlight_value_difference(
+                customer_typ, bosch_typ)
 
         # Replace the original texts in value_lines with highlighted versions.
         # Lines that receive highlighted HTML are left as-is (already safe).
@@ -312,6 +351,11 @@ class ReportGenerator:
                 value_lines[i] = f"       Customer ReqIF.Text: {highlighted_customer}"
             elif "Bosch Object Text:" in line and bosch_text:
                 value_lines[i] = f"       Bosch Object Text: {highlighted_bosch}"
+            # Highlight Typ differences
+            elif "Customer Typ:" in line and highlighted_customer_typ:
+                value_lines[i] = f"       Customer Typ: {highlighted_customer_typ}"
+            elif "Bosch Typ:" in line and highlighted_bosch_typ:
+                value_lines[i] = f"       Bosch Typ: {highlighted_bosch_typ}"
             # Replace "nan" with "Empty" for better readability, then escape
             elif "nan" in line.lower():
                 value_lines[i] = html.escape(line.replace("nan", "Empty").replace("NaN", "Empty"))
