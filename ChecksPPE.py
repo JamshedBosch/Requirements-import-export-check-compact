@@ -23,7 +23,7 @@ class ProjectCheckerPPE:
             logger.warning(f"Missing columns in file {file_path}: {missing_columns}")
             return findings
 
-        logger.info(f"Starting empty Object ID check for file: {file_path}")
+        logger.info(f"[CHECK NR.1 START] Empty Object ID with forbidden CR-Status | File: {file_path}")
         forbidden_status = ['014,', '013,', '100,']
         for index, row in df.iterrows():
             if pd.isna(row['Object ID']) and row[
@@ -46,7 +46,7 @@ class ProjectCheckerPPE:
                         f"CR-Status_Bosch_PPx: {row['CR-Status_Bosch_PPx']}"
                     )
                 })
-        logger.info(f"Completed empty Object ID check. Found {len(findings)} issues.")
+        logger.info(f"[CHECK NR.1 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.2
@@ -58,6 +58,7 @@ class ProjectCheckerPPE:
         Returns findings as a list of dictionaries.
         """
         findings = []
+        logger.info(f"[CHECK NR.2 START] CR-Status '---' with non-empty CR-ID | File: {file_path}")
         # Check for required columns
         required_columns = ['CR-Status_Bosch_PPx', 'CR-ID_Bosch_PPx',
                             'BRS-1Box_Status_Hersteller_Bosch_PPx']
@@ -101,6 +102,7 @@ class ProjectCheckerPPE:
                         f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}\n"
                         f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}")
                 })
+        logger.info(f"[CHECK NR.2 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.4
@@ -114,6 +116,7 @@ class ProjectCheckerPPE:
         Returns findings as a list of dictionaries.
         """
         findings = []
+        logger.info(f"[CHECK NR.4 START] Anlaufkonfiguration empty check | File: {file_path}")
         # Check for required columns
         required_columns = ['Object ID', 'Anlaufkonfiguration_01',
                             'Anlaufkonfiguration_02',
@@ -164,8 +167,9 @@ class ProjectCheckerPPE:
                             f"BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status}"
                         )
                     })
+        logger.info(f"[CHECK NR.4 END] Found {len(findings)} findings.")
         return findings
-        
+
     # Check Nr.5
     @staticmethod
     def compare_cr_id_and_brs_status_by_object_id(df, compare_df, file_path, compare_file_path):
@@ -179,6 +183,7 @@ class ProjectCheckerPPE:
         Allows multiple empty cells and non-unique Object IDs in the reference file.
         """
         findings = []
+        logger.info(f"[CHECK NR.5 START] CR-ID and BRS-Status comparison by Object ID | File: {file_path}")
         required_columns = ['Object ID', 'CR-ID_Bosch_PPx', 'BRS-1Box_Status_Hersteller_Bosch_PPx', 'CR-Status_Bosch_PPx', 'Typ']
         missing_columns = [col for col in required_columns if col not in df.columns]
         missing_reference_columns = [col for col in required_columns if col not in compare_df.columns]
@@ -244,6 +249,7 @@ class ProjectCheckerPPE:
                             f"       Bosch CR-Status_Bosch_PPx: {ref_cr_status_str}"
                         )
                     })
+        logger.info(f"[CHECK NR.5 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.6
@@ -257,6 +263,7 @@ class ProjectCheckerPPE:
         Logs findings if the condition is not met.
         """
         findings = []
+        logger.info(f"[CHECK NR.6 START] Object Text vs BRS-Status Hersteller | File: {file_path}")
         # Ensure required columns exist in both DataFrames
         required_columns = ['Object ID', 'Object Text',
                             'BRS-1Box_Status_Hersteller_Bosch_PPx']
@@ -329,6 +336,7 @@ class ProjectCheckerPPE:
                             )
                         })
 
+        logger.info(f"[CHECK NR.6 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.7
@@ -340,6 +348,7 @@ class ProjectCheckerPPE:
         Logs findings if the condition is not met.
         """
         findings = []
+        logger.info(f"[CHECK NR.7 START] Object Text with RB_AS_Status | File: {file_path}")
         # Ensure required columns exist in both DataFrames
         required_columns = ['Object ID', 'Object Text', 'RB_AS_Status']
         missing_columns = [col for col in required_columns[:2] if
@@ -420,6 +429,7 @@ class ProjectCheckerPPE:
                             )
                         })
 
+        logger.info(f"[CHECK NR.7 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.8
@@ -449,7 +459,7 @@ class ProjectCheckerPPE:
             logger.warning(f"None of the required attributes {all_required_columns} found in file {file_path}")
             return findings
             
-        logger.info(f"Checking available columns: {available_columns}")
+        logger.info(f"[CHECK NR.8 START] Required attributes not empty | File: {file_path}")
 
         # Iterate through rows and check conditions
         for index, row in df.iterrows():
@@ -494,7 +504,7 @@ class ProjectCheckerPPE:
                         'Value': "\n".join(details)
                     })
 
-        logger.info(f"Completed required attributes check. Found {len(findings)} issues in {len(available_columns)} available columns.")
+        logger.info(f"[CHECK NR.8 END] Found {len(findings)} findings.")
         return findings
     
     # Check Nr.9
@@ -514,6 +524,7 @@ class ProjectCheckerPPE:
             list of dict: Each dict describes a finding with row number, Object ID, and details.
         """
         findings = []
+        logger.info(f"[CHECK NR.9 START] New requirements without CR-ID | File: {file_path}")
         required_columns = ['Object ID', 'CR-ID_Bosch_PPx', 'Typ']
         missing_columns = [col for col in required_columns if col not in df.columns]
         missing_reference_columns = ['Object ID'] if 'Object ID' not in compare_df.columns else []
@@ -554,6 +565,7 @@ class ProjectCheckerPPE:
                         f"       Bosch Object ID: Not found"
                     )
                 })
+        logger.info(f"[CHECK NR.9 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.10
@@ -564,7 +576,7 @@ class ProjectCheckerPPE:
         Handles both string and integer values for CR-Status_Bosch_PPx.
         Returns findings as a list of dictionaries.
         """
-        logger.info(f"Starting Check Nr.10 for file: {os.path.basename(file_path)}")
+        logger.info(f"[CHECK NR.10 START] CR-Status 015 with BRS not abgestimmt | File: {file_path}")
         findings = []
         required_columns = ['CR-Status_Bosch_PPx', 'BRS-1Box_Status_Hersteller_Bosch_PPx', 'Object ID', 'Typ']
         missing_columns = [col for col in required_columns if col not in df.columns]
@@ -600,7 +612,7 @@ class ProjectCheckerPPE:
                         f"       BRS-1Box_Status_Hersteller_Bosch_PPx: {brs_status_norm}"
                     )
                 })
-        logger.info(f"Completed Check Nr.10. Found {len(findings)} issues.")
+        logger.info(f"[CHECK NR.10 END] Found {len(findings)} findings.")
         return findings
 
     
@@ -617,6 +629,7 @@ class ProjectCheckerPPE:
         Returns findings as a list of dictionaries.
         """
         findings = []
+        logger.info(f"[CHECK NR.1 (EXPORT) START] CR-ID with Typ and BRS-Status Zulieferer | File: {file_path}")
         # Check for required columns
         required_columns = ['CR-ID_Bosch_PPx', 'Typ',
                             'BRS-1Box_Status_Zulieferer_Bosch_PPx']
@@ -651,6 +664,7 @@ class ProjectCheckerPPE:
                             f"CR-ID_Bosch_PPx: {row['CR-ID_Bosch_PPx']}\n"
                             f"BRS-1Box_Status_Zulieferer_Bosch_PPx: {row['BRS-1Box_Status_Zulieferer_Bosch_PPx']}")
                     })
+        logger.info(f"[CHECK NR.1 (EXPORT) END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.2
@@ -660,6 +674,7 @@ class ProjectCheckerPPE:
         Returns findings as a list of dictionaries.
         """
         findings = []
+        logger.info(f"[CHECK NR.2 (EXPORT) START] Typ with BRS-Status Zulieferer | File: {file_path}")
         required_columns = ['Typ', 'BRS-1Box_Status_Zulieferer_Bosch_PPx']
         missing_columns = [col for col in required_columns if
                            col not in df.columns]
@@ -691,6 +706,7 @@ class ProjectCheckerPPE:
                             f"---------------\n"
                             f"BRS-1Box_Status_Zulieferer_Bosch_PPx: {value}")
                     })
+        logger.info(f"[CHECK NR.2 (EXPORT) END] Found {len(findings)} findings.")
         return findings
 
     

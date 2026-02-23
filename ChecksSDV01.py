@@ -31,7 +31,7 @@ class ProjectCheckerSDV01:
             logger.warning(f"Missing columns in file {file_path}: {missing_columns}")
             return findings
 
-        logger.info(f"Starting empty Object ID check (SDV01) for file: {file_path}")
+        logger.info(f"[CHECK NR.1 START] Empty Object ID with forbidden CR-Status | File: {file_path}")
         # Values are stored with a trailing comma in other projects, mirror that here.
         forbidden_status = ['014,', '031,', '100,']
         for index, row in df.iterrows():
@@ -60,7 +60,7 @@ class ProjectCheckerSDV01:
                         f"CR-Status_Bosch_SDV0.1: {row['CR-Status_Bosch_SDV0.1']}"
                     )
                 })
-        logger.info(f"Completed empty Object ID check (SDV01). Found {len(findings)} issues.")
+        logger.info(f"[CHECK NR.1 END] Found {len(findings)} findings.")
         return findings
     
     # Check Nr.2
@@ -73,6 +73,7 @@ class ProjectCheckerSDV01:
         Returns findings as a list of dictionaries.
         """
         findings: list[dict] = []
+        logger.info(f"[CHECK NR.2 START] CR-Status empty/'---' with non-empty CR-ID | File: {file_path}")
 
         required_columns = [
             'CR-Status_Bosch_SDV0.1',
@@ -139,6 +140,7 @@ class ProjectCheckerSDV01:
                     )
                 })
 
+        logger.info(f"[CHECK NR.2 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.3
@@ -152,6 +154,7 @@ class ProjectCheckerSDV01:
         A finding is created listing which release attributes are empty.
         """
         findings: list[dict] = []
+        logger.info(f"[CHECK NR.3 START] Missing release for non-verworfen status | File: {file_path}")
 
         required_columns = [
             'Object ID',
@@ -223,6 +226,7 @@ class ProjectCheckerSDV01:
                 )
             })
 
+        logger.info(f"[CHECK NR.3 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.4
@@ -244,6 +248,7 @@ class ProjectCheckerSDV01:
         - 'CR-Status_Bosch_SDV0.1' is shown in the report for context but is not compared.
         """
         findings: list[dict] = []
+        logger.info(f"[CHECK NR.4 START] CR-ID and BRS-Status comparison by Object ID | File: {file_path}")
         required_columns = [
             'Object ID',
             'CR-ID_Bosch_SDV0.1',
@@ -339,6 +344,7 @@ class ProjectCheckerSDV01:
                         )
                     })
 
+        logger.info(f"[CHECK NR.4 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.5
@@ -355,6 +361,7 @@ class ProjectCheckerSDV01:
         (accepts values with or without trailing comma). If not, a finding is reported.
         """
         findings: list[dict] = []
+        logger.info(f"[CHECK NR.5 START] ReqIF.Text vs Object Text with BRS status | File: {file_path}")
 
         required_columns = ['Object ID', 'ReqIF.Text', 'BRS_Status_Hersteller_Bosch_SDV0.1']
         compare_required_columns = ['Object ID', 'Object Text']
@@ -434,6 +441,7 @@ class ProjectCheckerSDV01:
                         )
                     })
 
+        logger.info(f"[CHECK NR.5 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.6
@@ -450,6 +458,7 @@ class ProjectCheckerSDV01:
         If the text differs and RB_AS_Status is one of these prohibited values, a finding is reported.
         """
         findings: list[dict] = []
+        logger.info(f"[CHECK NR.6 START] Object Text with RB_AS_Status | File: {file_path}")
 
         required_columns = ['Object ID', 'Object Text', 'RB_AS_Status']
         missing_columns = [col for col in required_columns if col not in df.columns]
@@ -530,6 +539,7 @@ class ProjectCheckerSDV01:
                         )
                     })
 
+        logger.info(f"[CHECK NR.6 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.7
@@ -567,7 +577,7 @@ class ProjectCheckerSDV01:
             )
             return findings
 
-        logger.info(f"Checking available columns for emptiness (SDV01): {available_columns}")
+        logger.info(f"[CHECK NR.7 START] Required attributes not empty | File: {file_path}")
 
         for index, row in df.iterrows():
             brs_status = row[brs_status_column]
@@ -610,10 +620,7 @@ class ProjectCheckerSDV01:
                         'Value': "\n".join(details)
                     })
 
-        logger.info(
-            f"Completed required attributes check (SDV01). "
-            f"Found {len(findings)} issues in {len(available_columns)} available columns."
-        )
+        logger.info(f"[CHECK NR.7 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.8
@@ -640,6 +647,7 @@ class ProjectCheckerSDV01:
             list of dict: Each dict describes a finding with row number, Object ID, and details.
         """
         findings: list[dict] = []
+        logger.info(f"[CHECK NR.8 START] New requirements without CR-ID | File: {file_path}")
         required_columns = ['Object ID', 'CR-ID_Bosch_SDV0.1', 'Typ']
         missing_columns = [col for col in required_columns if col not in df.columns]
         missing_reference_columns = ['Object ID'] if 'Object ID' not in compare_df.columns else []
@@ -695,6 +703,7 @@ class ProjectCheckerSDV01:
                     )
                 })
 
+        logger.info(f"[CHECK NR.8 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.9
@@ -717,6 +726,7 @@ class ProjectCheckerSDV01:
         (eine verworfene Anforderung muss mit einem CR bei Bosch kommen).
         """
         findings: list[dict] = []
+        logger.info(f"[CHECK NR.9 START] Reject-with-new-CR validation | File: {file_path}")
         required_columns = ['Object ID', 'CR-ID_Bosch_SDV0.1', 'BRS_Status_Hersteller_Bosch_SDV0.1']
         missing_columns = [col for col in required_columns if col not in df.columns]
 
@@ -826,6 +836,7 @@ class ProjectCheckerSDV01:
                     })
                     break
 
+        logger.info(f"[CHECK NR.9 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.10
@@ -848,6 +859,7 @@ class ProjectCheckerSDV01:
         dann darf der CR-Status nicht mit neuem CR-Status überschrieben werden.
         """
         findings: list[dict] = []
+        logger.info(f"[CHECK NR.10 START] CR-Status overwrite protection | File: {file_path}")
         required_columns = ['Object ID', 'CR-Status_Bosch_SDV0.1', 'CR-ID_Bosch_SDV0.1']
         missing_columns = [col for col in required_columns if col not in df.columns]
         missing_reference_columns = ['Object ID', 'CR-Status_Bosch_SDV0.1', 'CR-ID_Bosch_SDV0.1']
@@ -951,6 +963,7 @@ class ProjectCheckerSDV01:
                         )
                     })
 
+        logger.info(f"[CHECK NR.10 END] Found {len(findings)} findings.")
         return findings
 
     @staticmethod
