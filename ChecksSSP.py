@@ -636,7 +636,7 @@ class ProjectCheckerSSP:
 
         If any of these attributes differ for a given Object ID, a finding is created.
         These findings are later used to generate a TSV file listing affected Object IDs
-        with a column 'RB_update-detected' set to 'Yes'.
+        with a column 'RB_Update_detected' set to 'Yes'.
 
         Hinweis: Beim Vergleich des Objekttexts werden Leerzeichen, Semikolons,
         einfache Anführungszeichen und doppelte Anführungszeichen ignoriert
@@ -820,7 +820,7 @@ class ProjectCheckerSSP:
                     f"       Bosch Object Text English: {bosch_eng_str if eng_enabled and 'bosch_eng_str' in locals() and bosch_eng_str else 'Empty'}\n"
                     f"       Bosch Typ: {bosch_typ_norm if typ_enabled else 'Empty'}\n"
                     f"---------------\n"
-                    f"       RB_update-detected: Yes"
+                    f"       RB_Update_detected: Yes"
                 )
             })
 

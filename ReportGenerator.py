@@ -691,7 +691,7 @@ class ReportGenerator:
                 seen_ids.add(object_id)
                 rows.append({
                     'Object ID': object_id,
-                    'RB_update-detected': 'Yes',
+                    'RB_Update_detected': 'Yes',
                 })
 
             if not rows:
