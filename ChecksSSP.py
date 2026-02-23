@@ -25,12 +25,12 @@ class ProjectCheckerSSP:
         identifier_col = 'ReqIF.ForeignID' if 'ReqIF.ForeignID' in df.columns else 'Object ID'
         compare_identifier_col = 'ForeignID' if 'ForeignID' in compare_df.columns else 'Object ID'
 
-        logger.info(f"Starting text comparison check between {file_path} and {compare_file_path}")
+        logger.info(f"[CHECK NR.6 START] Text comparison (ReqIF.Text vs Object Text) | File: {file_path}")
         logger.debug(f"Using identifier columns: {identifier_col} and {compare_identifier_col}")
 
         # Check which category/type column exists
         category_col = 'ReqIF.Category' if 'ReqIF.Category' in df.columns else 'Typ'
-        
+
         required_columns = ['ReqIF.Text', identifier_col,
                             'Status OEM zu Lieferant R', category_col]
         compare_required_columns = ['Object Text', compare_identifier_col]
@@ -130,6 +130,7 @@ class ProjectCheckerSSP:
                             )
                         })
 
+        logger.info(f"[CHECK NR.6 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.8
@@ -154,6 +155,7 @@ class ProjectCheckerSSP:
         Logs findings if the condition is not met with a simplified format showing only differing attributes.
         """
         findings = []
+        logger.info(f"[CHECK NR.8 START] Multiple attributes comparison (ReqIF.Category, ASIL, Reifegrad, Typ) | File: {file_path}")
         # Determine the identifier column dynamically
         identifier_col = 'ReqIF.ForeignID' if 'ReqIF.ForeignID' in df.columns else 'Object ID'
         compare_identifier_col = 'ForeignID' if 'ForeignID' in compare_df.columns else 'Object ID'
@@ -383,6 +385,7 @@ class ProjectCheckerSSP:
                         )
                     })
 
+        logger.info(f"[CHECK NR.8 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.9
@@ -402,7 +405,7 @@ class ProjectCheckerSSP:
         # Check which category/type column exists
         category_col = 'ReqIF.Category' if 'ReqIF.Category' in df.columns else 'Typ'
 
-        logger.info(f"Starting Quelle comparison check between {file_path} and {compare_file_path}")
+        logger.info(f"[CHECK NR.9 START] Quelle comparison | File: {file_path}")
         logger.debug(f"Using identifier columns: {identifier_col} and {compare_identifier_col}")
 
         # Check for required columns
@@ -493,7 +496,7 @@ class ProjectCheckerSSP:
                             )
                         })
 
-        logger.info(f"Completed Quelle comparison check. Found {len(findings)} issues.")
+        logger.info(f"[CHECK NR.9 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.10
@@ -515,7 +518,7 @@ class ProjectCheckerSSP:
         # Check which category/type column exists
         category_col = 'ReqIF.Category' if 'ReqIF.Category' in df.columns else 'Typ'
 
-        logger.info(f"Starting text comparison check between {file_path} and {compare_file_path}")
+        logger.info(f"[CHECK NR.10 START] Text differences without status validation (ReqIF.Text vs Object Text) | File: {file_path}")
         logger.debug(f"Using identifier columns: {identifier_col} and {compare_identifier_col}")
 
         # Check for required columns
@@ -620,7 +623,7 @@ class ProjectCheckerSSP:
                         )
                     })
 
-        logger.info(f"Completed text comparison check. Found {len(findings)} differences.")
+        logger.info(f"[CHECK NR.10 END] Found {len(findings)} findings.")
         return findings
 
     # Check Nr.11
@@ -643,6 +646,7 @@ class ProjectCheckerSSP:
         (über HelperFunctions.normalize_text).
         """
         findings = []
+        logger.info(f"[CHECK NR.11 START] RB update detection (ReqIF.Text, English_Translation, Typ) | File: {file_path}")
 
         # This check is defined for Object ID based comparison (LAH vs DOORS export)
         # Always require 'Object ID' in both files; other attributes are checked flexibly.
@@ -824,5 +828,5 @@ class ProjectCheckerSSP:
                 )
             })
 
-        logger.info(f"Completed RB update check (Nr.11). Found {len(findings)} affected requirements.")
+        logger.info(f"[CHECK NR.11 END] Found {len(findings)} findings.")
         return findings
