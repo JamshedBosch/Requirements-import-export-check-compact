@@ -830,3 +830,154 @@ class ProjectCheckerSSP:
 
         logger.info(f"[CHECK NR.11 END] Found {len(findings)} findings.")
         return findings
+
+    # Check Nr.12
+    @staticmethod
+    def check_missing_object_ids_from_bosch(df, compare_df, file_path, compare_file_path):
+        """
+        Check Nr.12: Detects Object IDs present in the Bosch file (for the matching module)
+        that are missing from the customer file. Purpose: prevent accidental deletion of
+        Object IDs in customer files.
+
+        - The customer file's module name is extracted from its filename
+          (pattern: <ModuleName>_<8hex>_local_conversion.xlsx).
+        - The Bosch file's 'Modulename' column is searched for matching rows using
+          fuzzy matching (dots, spaces, underscores treated as equivalent; prefix match
+          or LAH-ID-only fallback).
+        - For each Object ID present in the matched Bosch rows but absent in the
+          customer file, a finding is generated.
+        """
+        findings = []
+        logger.info(f"[CHECK NR.12 START] Missing Object ID detection | File: {file_path}")
+
+        # --- Validate required columns ---
+        if 'Object ID' not in df.columns:
+            logger.warning(f"[CHECK NR.12] 'Object ID' column not found in customer file: {file_path}.")
+            findings.append({
+                'Row': 'N/A',
+                'Check Number': 'Nr.12',
+                'Object ID': 'N/A',
+                'Attribute': 'Object ID',
+                'Issue': "'Object ID' column is missing entirely from the customer file.",
+                'Value': (
+                    f"Customer File Name: {os.path.basename(file_path)}\n"
+                    f"\n"
+                    f"       The 'Object ID' column could not be found in the customer file.\n"
+                    f"       All Object IDs from the corresponding Bosch module are therefore unverifiable.\n"
+                    f"\n"
+                    f"       Action Required:\n"
+                    f"       Please discuss with the customer why the 'Object ID' column has been\n"
+                    f"       removed from the file and request written clarification. Ensure the\n"
+                    f"       file is re-exported correctly before proceeding with further checks."
+                )
+            })
+            return findings
+        if 'Object ID' not in compare_df.columns:
+            logger.warning(f"[CHECK NR.12] 'Object ID' column not found in Bosch file: {compare_file_path}. Skipping.")
+            return findings
+        if 'Modulename' not in compare_df.columns:
+            logger.warning(f"[CHECK NR.12] 'Modulename' column not found in Bosch file: {compare_file_path}. Skipping.")
+            return findings
+
+        # --- Extract module name from customer filename ---
+        filename = os.path.basename(file_path)
+        _filename_re = re.compile(r'^(?P<base>.+?)_[0-9a-fA-F]{8}_local_conversion\.xlsx$', re.IGNORECASE)
+        m = _filename_re.match(filename)
+        if not m:
+            logger.warning(f"[CHECK NR.12] Filename does not match expected pattern: {filename}. Skipping.")
+            return findings
+        source_module = m.group('base')
+        logger.debug(f"[CHECK NR.12] Extracted module name from filename: {source_module}")
+
+        # --- Fuzzy matching helpers (same logic as find_moduleName.py) ---
+        def _norm(s: str) -> str:
+            s = s.strip()
+            s = re.sub(r'[ _.]', '.', s)
+            s = re.sub(r'\.{2,}', '.', s)
+            return s.lower()
+
+        def _extract_key(modulename: str) -> str:
+            """Take last path segment and strip leading AS_NNN_ prefix."""
+            segment = str(modulename).strip().split('/')[-1]
+            segment = re.sub(r'^[A-Z]+_\d+_', '', segment)
+            return segment.strip()
+
+        src_norm = _norm(source_module)
+
+        # ID-only fallback: just the LAH code (e.g. "LAH.000.900.CM"), stops before first "_"
+        _lah_id_re = re.compile(r'^(LAH[A-Za-z0-9.]+)', re.IGNORECASE)
+        id_m = _lah_id_re.match(source_module)
+        lah_id_norm = (_norm(id_m.group(1)) + '.') if id_m else None
+
+        def _matches_module(modulename) -> bool:
+            if pd.isna(modulename):
+                return False
+            key_norm = _norm(_extract_key(str(modulename)))
+            if key_norm.startswith(src_norm):
+                return True
+            if lah_id_norm and key_norm.startswith(lah_id_norm):
+                return True
+            return False
+
+        # --- Filter Bosch rows for this module ---
+        bosch_module_df = compare_df[compare_df['Modulename'].apply(_matches_module)]
+
+        if bosch_module_df.empty:
+            logger.warning(f"[CHECK NR.12] No matching module found in Bosch file for: {source_module}. Skipping.")
+            return findings
+
+        logger.debug(f"[CHECK NR.12] {len(bosch_module_df)} Bosch rows matched for module: {source_module}")
+
+        # --- Collect Object IDs from both sides ---
+        bosch_object_ids = {
+            str(oid).strip()
+            for oid in bosch_module_df['Object ID']
+            if not pd.isna(oid) and str(oid).strip() != ''
+        }
+        customer_object_ids = {
+            str(oid).strip()
+            for oid in df['Object ID']
+            if not pd.isna(oid) and str(oid).strip() != ''
+        }
+
+        missing_ids = bosch_object_ids - customer_object_ids
+
+        if not missing_ids:
+            logger.info(f"[CHECK NR.12 END] No missing Object IDs found.")
+            return findings
+
+        # --- Build a lookup for Bosch Object Text (for context in findings) ---
+        bosch_text_lookup = {}
+        if 'Object Text' in bosch_module_df.columns:
+            for _, row in bosch_module_df.iterrows():
+                oid = str(row.get('Object ID', '')).strip()
+                text = row.get('Object Text', '')
+                if oid and oid not in bosch_text_lookup:
+                    bosch_text_lookup[oid] = '' if pd.isna(text) else str(text).strip()
+
+        # --- Generate findings ---
+        for missing_id in sorted(missing_ids):
+            object_text = bosch_text_lookup.get(missing_id, '')
+            findings.append({
+                'Row': 'N/A',
+                'Check Number': 'Nr.12',
+                'Object ID': missing_id,
+                'Attribute': 'Object ID',
+                'Issue': "Object ID exists in Bosch file but is missing in customer file (possible deletion).",
+                'Value': (
+                    f"Object ID: {missing_id}\n"
+                    f"\n"
+                    f"---------------\n"
+                    f"       Customer File Name: {os.path.basename(file_path)}\n"
+                    f"       Status: Object ID NOT FOUND in customer file\n"
+                    f"---------------\n"
+                    f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
+                    f"       Bosch Module: {source_module}\n"
+                    f"       Bosch Object Text: {object_text if object_text else 'N/A'}\n"
+                    f"---------------\n"
+                    f"       Action Required: Verify if this Object ID was intentionally deleted."
+                )
+            })
+
+        logger.info(f"[CHECK NR.12 END] Found {len(findings)} missing Object IDs.")
+        return findings

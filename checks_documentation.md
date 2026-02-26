@@ -264,6 +264,110 @@ The `ProjectCheckerSSP` class implements checks for SSP (Scalable System Platfor
   - Maintains consistent formatting with other checks
   - Indicates potential translation needs in the issue description
 
+#### 11. RB Update Detection for Changed Requirements
+**Method**: `check_rb_update_for_changed_requirements`
+- **Purpose**: Detects whether a Bosch update (RB update) is required based on differences in key attributes between the customer file and the Bosch reference file. The findings are used to generate a separate TSV file listing affected Object IDs with an `RB_Update_detected = Yes` flag.
+- **Attributes Compared** (all comparisons are by `Object ID`):
+  | Customer Attribute | Bosch Attribute |
+  |---|---|
+  | `ReqIF.Text` | `Object Text` |
+  | `English_Translation` | `Object Text English` |
+  | `Typ` / `Type` | `Typ` |
+- **Flexible Execution**:
+  - Only attributes present in both files are compared; missing attributes are silently skipped
+  - `Type` (customer) is mapped to `Typ` semantics: `Folder → Überschrift`, `Requirement → Anforderung`, `Information → Information`
+  - Skips the check entirely if none of the three attribute pairs are available
+- **Text Normalization**:
+  - Applies `HelperFunctions.normalize_symbols`, `clean_ole_object_text`, and `normalize_text`
+  - Hyphens are removed and text is lowercased before comparison
+- **Finding Trigger**: At least one of the three attribute pairs differs for a given `Object ID`
+- **Deduplication**: Only one finding per `Object ID` is generated even if the same ID appears in multiple rows
+- **Report Format**:
+  ```
+  Object ID: [object_id]
+  ---------------
+         Customer File Name: [filename]
+         Customer ReqIF.Text: [value]
+         Customer Object Text English: [value]
+         Customer Typ: [value]
+  ---------------
+         Bosch File Name: [filename]
+         Bosch Object Text: [value]
+         Bosch Object Text English: [value]
+         Bosch Typ: [value]
+  ---------------
+         RB_Update_detected: Yes
+  ```
+- **Additional Output**: A `_rb_update.tsv` file is generated alongside the HTML report, containing one row per affected `Object ID` with column `RB_Update_detected = Yes`.
+
+---
+
+#### 12. Missing Object IDs from Bosch File
+**Method**: `check_missing_object_ids_from_bosch`
+- **Purpose**: Detects `Object ID`s that are present in the Bosch reference file (for the matching module) but are absent from the customer file. This check prevents the accidental deletion of requirements in customer files.
+- **Background**: When a customer file is exported and re-imported, requirements can be inadvertently deleted. This check acts as a safety net by cross-referencing every Bosch `Object ID` — scoped to the relevant module — against the customer file.
+
+##### Module Identification
+The customer file's module is identified by parsing its filename using the pattern:
+```
+<ModuleName>_<8-hex-chars>_local_conversion.xlsx
+```
+The extracted `<ModuleName>` is then matched against the `Modulename` column in the Bosch file using **two-tier fuzzy matching**:
+
+| Tier | Strategy | Example match |
+|---|---|---|
+| 1 — Full prefix | Normalized source name is a prefix of normalized target key | `LAH.5G0.042.F_DynamometerOperationMode` → `AS_064_LAH.5G0.042.F_DynamometerOperationMode` |
+| 2 — LAH ID only | Only the LAH code (e.g. `LAH.000.900.CM`) is matched | `LAH.000.900.CM_ECU Standard...` → `AS_122_LAH.000.900.CM Standard Eigendiagnose...` |
+
+**Normalization rules** (applied to both sides before comparison):
+- Spaces, underscores (`_`), and dots (`.`) are treated as equivalent
+- Multiple consecutive separators are collapsed into one
+- Comparison is case-insensitive
+- The leading `AS_<NNN>_` prefix is stripped from the target's last path segment
+
+##### Logic
+1. Extract module name from the customer filename
+2. Filter all Bosch rows whose `Modulename` matches the extracted module (fuzzy)
+3. Collect all non-empty `Object ID` values from the filtered Bosch rows
+4. Collect all non-empty `Object ID` values from the customer file
+5. Compute: `missing = bosch_ids − customer_ids`
+6. Generate one finding per missing `Object ID`
+
+##### Required Columns
+| File | Required Columns |
+|---|---|
+| Customer file | `Object ID` |
+| Bosch file | `Object ID`, `Modulename` |
+
+##### Special Cases
+- **`Object ID` column entirely missing from customer file**: A finding is generated indicating that the column itself is absent. The action text requests written clarification from the customer as to why the column was removed.
+- **No matching module found in Bosch file**: The check is silently skipped with a warning log entry.
+- **Filename does not match expected pattern**: The check is silently skipped with a warning log entry.
+
+##### Finding Trigger
+Any `Object ID` present in the Bosch file (for the matched module) that cannot be found in the customer file.
+
+##### Report Format
+```
+Object ID: [missing_object_id]
+
+---------------
+       Customer File Name: [filename]
+       Status: Object ID NOT FOUND in customer file   ← highlighted in yellow
+---------------
+       Bosch File Name: [filename]
+       Bosch Module: [extracted_module_name]
+       Bosch Object Text: [object_text_from_bosch | N/A]
+---------------
+       Action Required: Verify if this Object ID was intentionally deleted.
+```
+
+- The **`Status`** line is rendered with a **yellow highlight** in the HTML report for immediate visual attention
+- `Bosch Object Text` provides context about the deleted requirement (shown as `N/A` if the Bosch file has no `Object Text` column)
+- `Row` is reported as `N/A` since the Object ID is absent from the customer file and has no corresponding row
+
+---
+
 ## ChecksSDV01.py
 The `ProjectCheckerSDV01` class implements checks for SDV01 requirements.
 

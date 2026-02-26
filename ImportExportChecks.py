@@ -192,6 +192,10 @@ class ChecksProcessor:
                     #check 11
                     findings += ProjectCheckerSSP.check_rb_update_for_changed_requirements(
                         df, self.compare_df, file_path, self.compare_file)
+
+                    # check 12
+                    findings += ProjectCheckerSSP.check_missing_object_ids_from_bosch(
+                        df, self.compare_df, file_path, self.compare_file)
             else:
                 # Export check BOSCH ==> AUDI
                 print("[SSP] NO EXPORT CHECKS DEFINED SOFAR")

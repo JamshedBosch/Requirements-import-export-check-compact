@@ -108,6 +108,13 @@ class ReportGenerator:
                        background-color: #cf222e;
                        color: white;
                    }
+                   .highlight-warning {
+                       background-color: #FFD700;
+                       color: #000000;
+                       font-weight: bold;
+                       padding: 1px 4px;
+                       border-radius: 3px;
+                   }
                    .text-block {
                        margin: 10px 0;
                        padding: 10px;
@@ -356,6 +363,10 @@ class ReportGenerator:
                 value_lines[i] = f"       Customer Typ: {highlighted_customer_typ}"
             elif "Bosch Typ:" in line and highlighted_bosch_typ:
                 value_lines[i] = f"       Bosch Typ: {highlighted_bosch_typ}"
+            # Highlight "Object ID NOT FOUND" status in yellow
+            elif "Status: Object ID NOT FOUND" in line:
+                label, _, status = line.partition("Status:")
+                value_lines[i] = f'{html.escape(label)}Status: <span class="highlight-warning">{html.escape(status.strip())}</span>'
             # Replace "nan" with "Empty" for better readability, then escape
             elif "nan" in line.lower():
                 value_lines[i] = html.escape(line.replace("nan", "Empty").replace("NaN", "Empty"))
