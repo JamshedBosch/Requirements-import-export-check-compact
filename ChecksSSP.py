@@ -850,38 +850,14 @@ class ProjectCheckerSSP:
         findings = []
         logger.info(f"[CHECK NR.12 START] Missing Object ID detection | File: {file_path}")
 
-        # --- Validate required columns ---
-        if 'Object ID' not in df.columns:
-            logger.warning(f"[CHECK NR.12] 'Object ID' column not found in customer file: {file_path}.")
-            findings.append({
-                'Row': 'N/A',
-                'Check Number': 'Nr.12',
-                'Object ID': 'N/A',
-                'Attribute': 'Object ID',
-                'Issue': "'Object ID' column is missing entirely from the customer file.",
-                'Value': (
-                    f"Customer File Name: {os.path.basename(file_path)}\n"
-                    f"\n"
-                    f"       The 'Object ID' column could not be found in the customer file.\n"
-                    f"       All Object IDs from the corresponding Bosch module are therefore unverifiable.\n"
-                    f"\n"
-                    f"       Action Required:\n"
-                    f"       Please discuss with the customer why the 'Object ID' column has been\n"
-                    f"       removed from the file and request written clarification. Ensure the\n"
-                    f"       file is re-exported correctly before proceeding with further checks."
-                )
-            })
-            return findings
-        if 'Object ID' not in compare_df.columns:
-            logger.warning(f"[CHECK NR.12] 'Object ID' column not found in Bosch file: {compare_file_path}. Skipping.")
-            return findings
+        # --- Validate Modulename column (required for module matching) ---
         if 'Modulename' not in compare_df.columns:
             logger.warning(f"[CHECK NR.12] 'Modulename' column not found in Bosch file: {compare_file_path}. Skipping.")
             return findings
 
         # --- Extract module name from customer filename ---
         filename = os.path.basename(file_path)
-        _filename_re = re.compile(r'^(?P<base>.+?)_[0-9a-fA-F]{8}_local_conversion\.xlsx$', re.IGNORECASE)
+        _filename_re = re.compile(r'^(?P<base>.+?)_[0-9a-fA-F]+_local_conversion\.xlsx$', re.IGNORECASE)
         m = _filename_re.match(filename)
         if not m:
             logger.warning(f"[CHECK NR.12] Filename does not match expected pattern: {filename}. Skipping.")
@@ -928,29 +904,88 @@ class ProjectCheckerSSP:
 
         logger.debug(f"[CHECK NR.12] {len(bosch_module_df)} Bosch rows matched for module: {source_module}")
 
-        # --- Collect Object IDs from both sides ---
-        bosch_object_ids = {
-            str(oid).strip()
-            for oid in bosch_module_df['Object ID']
+        # --- Determine file type (QSLAH or Prio-1) from matched Bosch Modulename ---
+        QSLAH_PREFIX = '/260177_Audi_SSP/10_260177_Customer-Spec_AS/QSLAH/'
+        PRIO1_PREFIX = '/260177_Audi_SSP/10_260177_Customer-Spec_AS/Prio-1/'
+
+        file_type = 'QSLAH'  # default
+        for mn in bosch_module_df['Modulename'].dropna().astype(str):
+            if mn.startswith(PRIO1_PREFIX):
+                file_type = 'Prio-1'
+                break
+            elif mn.startswith(QSLAH_PREFIX):
+                file_type = 'QSLAH'
+                break
+
+        logger.info(f"[CHECK NR.12] Detected file type: {file_type}")
+
+        # --- Set identifier columns based on file type ---
+        if file_type == 'Prio-1':
+            customer_id_col = 'ReqIF.ForeignID'
+            bosch_id_col = 'ForeignID'
+        else:  # QSLAH
+            customer_id_col = 'Object ID'
+            bosch_id_col = 'Object ID'
+
+        logger.debug(f"[CHECK NR.12] Using identifier columns: customer='{customer_id_col}', bosch='{bosch_id_col}'")
+
+        # --- Validate identifier columns ---
+        if customer_id_col not in df.columns:
+            logger.warning(f"[CHECK NR.12] '{customer_id_col}' column not found in customer file: {file_path}.")
+            findings.append({
+                'Row': 'N/A',
+                'Check Number': 'Nr.12',
+                'Object ID': 'N/A',
+                'Attribute': customer_id_col,
+                'Issue': f"'{customer_id_col}' column is missing entirely from the customer file.",
+                'Value': (
+                    f"Customer File Name: {os.path.basename(file_path)}\n"
+                    f"\n"
+                    f"       The '{customer_id_col}' column could not be found in the customer file.\n"
+                    f"       All IDs from the corresponding Bosch module are therefore unverifiable.\n"
+                    f"\n"
+                    f"       Action Required:\n"
+                    f"       Please discuss with the customer why the '{customer_id_col}' column has been\n"
+                    f"       removed from the file and request written clarification. Ensure the\n"
+                    f"       file is re-exported correctly before proceeding with further checks."
+                )
+            })
+            return findings
+        if bosch_id_col not in bosch_module_df.columns:
+            logger.warning(f"[CHECK NR.12] '{bosch_id_col}' column not found in Bosch file: {compare_file_path}. Skipping.")
+            return findings
+
+        # --- Collect IDs from both sides ---
+        def _norm_id(oid) -> str:
+            """Normalize ID: strip trailing .0 so '12150732.0' == '12150732'."""
+            s = str(oid).strip()
+            try:
+                return str(int(float(s)))
+            except (ValueError, TypeError):
+                return s
+
+        bosch_ids = {
+            _norm_id(oid)
+            for oid in bosch_module_df[bosch_id_col]
             if not pd.isna(oid) and str(oid).strip() != ''
         }
-        customer_object_ids = {
-            str(oid).strip()
-            for oid in df['Object ID']
+        customer_ids = {
+            _norm_id(oid)
+            for oid in df[customer_id_col]
             if not pd.isna(oid) and str(oid).strip() != ''
         }
 
-        missing_ids = bosch_object_ids - customer_object_ids
+        missing_ids = bosch_ids - customer_ids
 
         if not missing_ids:
-            logger.info(f"[CHECK NR.12 END] No missing Object IDs found.")
+            logger.info(f"[CHECK NR.12 END] No missing IDs found.")
             return findings
 
         # --- Build a lookup for Bosch Object Text (for context in findings) ---
         bosch_text_lookup = {}
         if 'Object Text' in bosch_module_df.columns:
             for _, row in bosch_module_df.iterrows():
-                oid = str(row.get('Object ID', '')).strip()
+                oid = str(row.get(bosch_id_col, '')).strip()
                 text = row.get('Object Text', '')
                 if oid and oid not in bosch_text_lookup:
                     bosch_text_lookup[oid] = '' if pd.isna(text) else str(text).strip()
@@ -962,22 +997,23 @@ class ProjectCheckerSSP:
                 'Row': 'N/A',
                 'Check Number': 'Nr.12',
                 'Object ID': missing_id,
-                'Attribute': 'Object ID',
-                'Issue': "Object ID exists in Bosch file but is missing in customer file (possible deletion).",
+                'Attribute': customer_id_col,
+                'Issue': f"ID ({bosch_id_col}) exists in Bosch file but is missing in customer file (possible deletion).",
                 'Value': (
-                    f"Object ID: {missing_id}\n"
+                    f"{customer_id_col}: {missing_id}\n"
                     f"\n"
                     f"---------------\n"
                     f"       Customer File Name: {os.path.basename(file_path)}\n"
-                    f"       Status: Object ID NOT FOUND in customer file\n"
+                    f"       Status: ID NOT FOUND in customer file\n"
                     f"---------------\n"
                     f"       Bosch File Name: {os.path.basename(compare_file_path)}\n"
                     f"       Bosch Module: {source_module}\n"
-                    f"       Bosch Object Text: {object_text if object_text else 'N/A'}\n"
+                    f"       File Type: {file_type}\n"
+                    f"       Bosch Object Text: {object_text if object_text else 'Empty'}\n"
                     f"---------------\n"
-                    f"       Action Required: Verify if this Object ID was intentionally deleted."
+                    f"       Action Required: Verify if this ID was intentionally deleted."
                 )
             })
 
-        logger.info(f"[CHECK NR.12 END] Found {len(findings)} missing Object IDs.")
+        logger.info(f"[CHECK NR.12 END] Found {len(findings)} missing IDs.")
         return findings

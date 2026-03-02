@@ -363,8 +363,8 @@ class ReportGenerator:
                 value_lines[i] = f"       Customer Typ: {highlighted_customer_typ}"
             elif "Bosch Typ:" in line and highlighted_bosch_typ:
                 value_lines[i] = f"       Bosch Typ: {highlighted_bosch_typ}"
-            # Highlight "Object ID NOT FOUND" status in yellow
-            elif "Status: Object ID NOT FOUND" in line:
+            # Highlight "NOT FOUND" status lines in yellow
+            elif "Status:" in line and "NOT FOUND" in line:
                 label, _, status = line.partition("Status:")
                 value_lines[i] = f'{html.escape(label)}Status: <span class="highlight-warning">{html.escape(status.strip())}</span>'
             # Replace "nan" with "Empty" for better readability, then escape
