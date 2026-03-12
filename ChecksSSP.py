@@ -1017,3 +1017,100 @@ class ProjectCheckerSSP:
 
         logger.info(f"[CHECK NR.12 END] Found {len(findings)} missing IDs.")
         return findings
+
+    # Check Nr.13
+    @staticmethod
+    def check_cr_number_status(df, compare_df, file_path, compare_file_path, cr_number, report_folder):
+        """
+        Check Nr.13: Given a CR number (e.g. 'BRSSSP-312'), looks it up in the compare file's
+        'Customer Id' column to retrieve the 'Customer Status'. Then finds all rows in the
+        customer file where 'externe CR-ID' matches the CR number and generates a TSV file
+        with columns 'ForeignID' and 'CR-Status_Bosch_SSP' filled with that customer status.
+        """
+        findings = []
+        cr_status_col = 'CR-Status_Bosch_SSP'
+        logger.info(f"[CHECK NR.13 START] CR Number Status extraction | CR: {cr_number} | File: {file_path}")
+
+        # --- Validate required columns in compare file ---
+        compare_required = ['Customer Id', 'Customer Status']
+        missing_compare = [c for c in compare_required if c not in compare_df.columns]
+        if missing_compare:
+            logger.warning(f"[CHECK NR.13] Missing columns in compare file: {missing_compare}. Skipping.")
+            return findings
+
+        # --- Look up CR number in compare file ---
+        cr_rows = compare_df[compare_df['Customer Id'].astype(str).str.strip() == cr_number.strip()]
+        if cr_rows.empty:
+            logger.warning(f"[CHECK NR.13] CR number '{cr_number}' not found in compare file column 'Customer Id'.")
+            findings.append({
+                'Row': 'N/A',
+                'Check Number': 'Nr.13',
+                'Object ID': 'N/A',
+                'Attribute': 'Customer Id',
+                'Issue': f"CR number '{cr_number}' was not found in the compare file.",
+                'Value': (
+                    f"CR Number: {cr_number}\n"
+                    f"Compare File: {os.path.basename(compare_file_path)}\n"
+                    f"Column searched: 'Customer Id'"
+                )
+            })
+            return findings
+
+        customer_status = str(cr_rows.iloc[0]['Customer Status']).strip()
+        logger.debug(f"[CHECK NR.13] Found Customer Status: '{customer_status}' for CR: {cr_number}")
+
+        # --- Validate required columns in customer file ---
+        customer_required = ['externe CR-ID', 'ReqIF.ForeignID']
+        missing_customer = [c for c in customer_required if c not in df.columns]
+        if missing_customer:
+            logger.warning(f"[CHECK NR.13] Missing columns in customer file: {missing_customer}. Skipping.")
+            return findings
+
+        # --- Find matching rows in customer file ---
+        matching = df[df['externe CR-ID'].astype(str).str.strip() == cr_number.strip()]
+        if matching.empty:
+            logger.info(f"[CHECK NR.13] No rows found in customer file with 'externe CR-ID' = '{cr_number}'.")
+            findings.append({
+                'Row': 'N/A',
+                'Check Number': 'Nr.13',
+                'Object ID': 'N/A',
+                'Attribute': 'externe CR-ID',
+                'Issue': f"CR number '{cr_number}' was not found in the customer file.",
+                'Value': (
+                    f"CR Number: {cr_number}\n"
+                    f"Customer File: {os.path.basename(file_path)}\n"
+                    f"Column searched: 'externe CR-ID'"
+                )
+            })
+            return findings
+
+        # --- Build and write TSV file ---
+        tsv_rows = []
+        for _, row in matching.iterrows():
+            foreign_id = row['ReqIF.ForeignID']
+            foreign_id_str = '' if pd.isna(foreign_id) else str(foreign_id).strip()
+            tsv_rows.append({'ForeignID': foreign_id_str, cr_status_col: customer_status})
+
+        tsv_df = pd.DataFrame(tsv_rows, columns=['ForeignID', cr_status_col])
+        cr_number_safe = cr_number.replace('/', '_').replace('\\', '_').replace(' ', '_')
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
+        tsv_filename = f"{base_name}_CR_{cr_number_safe}.tsv"
+        tsv_path = os.path.join(report_folder, tsv_filename)
+        tsv_df.to_csv(tsv_path, sep='\t', index=False)
+        logger.info(f"[CHECK NR.13 END] TSV written: {tsv_path} ({len(tsv_rows)} rows)")
+
+        findings.append({
+            'Row': 'N/A',
+            'Check Number': 'Nr.13',
+            'Object ID': 'N/A',
+            'Attribute': 'CR-Status',
+            'Issue': f"CR '{cr_number}' found. TSV file generated with {len(tsv_rows)} requirement(s).",
+            'Value': (
+                f"CR Number: {cr_number}\n"
+                f"Customer Status: {customer_status}\n"
+                f"TSV File: {tsv_filename}"
+            ),
+            'Type': 'info'
+        })
+
+        return findings

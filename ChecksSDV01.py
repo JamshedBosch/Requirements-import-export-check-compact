@@ -966,11 +966,112 @@ class ProjectCheckerSDV01:
         logger.info(f"[CHECK NR.10 END] Found {len(findings)} findings.")
         return findings
 
+    # Check Nr.11
+    @staticmethod
+    def check_cr_number_status(df: pd.DataFrame, compare_df: pd.DataFrame,
+                               file_path: str, compare_file_path: str,
+                               cr_number: str, report_folder: str) -> list[dict]:
+        """
+        Check Nr.11: Given a CR number (e.g. 'BRSSDV01-312'), looks it up in the compare file's
+        'Customer Id' column to retrieve the 'Customer Status'. Then finds all rows in the
+        customer file where 'externe CR-ID' matches the CR number and generates a TSV file
+        with columns 'ForeignID' and 'CR-Status_Bosch_SDV0.1' filled with that customer status.
+        """
+        findings: list[dict] = []
+        cr_status_col = 'CR-Status_Bosch_SDV0.1'
+        logger.info(f"[CHECK NR.11 START] CR Number Status extraction | CR: {cr_number} | File: {file_path}")
+
+        # --- Validate required columns in compare file ---
+        compare_required = ['Customer Id', 'Customer Status']
+        missing_compare = [c for c in compare_required if c not in compare_df.columns]
+        if missing_compare:
+            logger.warning(f"[CHECK NR.11] Missing columns in compare file: {missing_compare}. Skipping.")
+            return findings
+
+        # --- Look up CR number in compare file ---
+        cr_rows = compare_df[compare_df['Customer Id'].astype(str).str.strip() == cr_number.strip()]
+        if cr_rows.empty:
+            logger.warning(f"[CHECK NR.11] CR number '{cr_number}' not found in compare file column 'Customer Id'.")
+            findings.append({
+                'Row': 'N/A',
+                'Check Number': 'Nr.11',
+                'Object ID': 'N/A',
+                'Attribute': 'Customer Id',
+                'Issue': f"CR number '{cr_number}' was not found in the compare file.",
+                'Value': (
+                    f"CR Number: {cr_number}\n"
+                    f"Compare File: {os.path.basename(compare_file_path)}\n"
+                    f"Column searched: 'Customer Id'"
+                )
+            })
+            return findings
+
+        customer_status = str(cr_rows.iloc[0]['Customer Status']).strip()
+        logger.debug(f"[CHECK NR.11] Found Customer Status: '{customer_status}' for CR: {cr_number}")
+
+        # --- Validate required columns in customer file ---
+        customer_required = ['externe CR-ID', 'ReqIF.ForeignID']
+        missing_customer = [c for c in customer_required if c not in df.columns]
+        if missing_customer:
+            logger.warning(f"[CHECK NR.11] Missing columns in customer file: {missing_customer}. Skipping.")
+            return findings
+
+        # --- Find matching rows in customer file ---
+        matching = df[df['externe CR-ID'].astype(str).str.strip() == cr_number.strip()]
+        if matching.empty:
+            logger.info(f"[CHECK NR.11] No rows found in customer file with 'externe CR-ID' = '{cr_number}'.")
+            findings.append({
+                'Row': 'N/A',
+                'Check Number': 'Nr.11',
+                'Object ID': 'N/A',
+                'Attribute': 'externe CR-ID',
+                'Issue': f"CR number '{cr_number}' was not found in the customer file.",
+                'Value': (
+                    f"CR Number: {cr_number}\n"
+                    f"Customer File: {os.path.basename(file_path)}\n"
+                    f"Column searched: 'externe CR-ID'"
+                )
+            })
+            return findings
+
+        # --- Build and write TSV file ---
+        tsv_rows = []
+        for _, row in matching.iterrows():
+            foreign_id = row['ReqIF.ForeignID']
+            foreign_id_str = '' if pd.isna(foreign_id) else str(foreign_id).strip()
+            tsv_rows.append({'ForeignID': foreign_id_str, cr_status_col: customer_status})
+
+        tsv_df = pd.DataFrame(tsv_rows, columns=['ForeignID', cr_status_col])
+        cr_number_safe = cr_number.replace('/', '_').replace('\\', '_').replace(' ', '_')
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
+        tsv_filename = f"{base_name}_CR_{cr_number_safe}.tsv"
+        tsv_path = os.path.join(report_folder, tsv_filename)
+        tsv_df.to_csv(tsv_path, sep='\t', index=False)
+        logger.info(f"[CHECK NR.11 END] TSV written: {tsv_path} ({len(tsv_rows)} rows)")
+
+        findings.append({
+            'Row': 'N/A',
+            'Check Number': 'Nr.11',
+            'Object ID': 'N/A',
+            'Attribute': 'CR-Status',
+            'Issue': f"CR '{cr_number}' found. TSV file generated with {len(tsv_rows)} requirement(s).",
+            'Value': (
+                f"CR Number: {cr_number}\n"
+                f"Customer Status: {customer_status}\n"
+                f"TSV File: {tsv_filename}"
+            ),
+            'Type': 'info'
+        })
+
+        return findings
+
     @staticmethod
     def import_checks(df: pd.DataFrame,
                       file_path: str,
                       compare_df: pd.DataFrame | None = None,
-                      compare_file_path: str | None = None) -> list[dict]:
+                      compare_file_path: str | None = None,
+                      cr_number: str | None = None,
+                      report_folder: str | None = None) -> list[dict]:
         """
         Entry point for SDV01 import checks.
         Executes all SDV01 import checks and aggregates their findings.
@@ -1021,6 +1122,12 @@ class ProjectCheckerSDV01:
         findings += ProjectCheckerSDV01.check_new_cr_exists_for_rejected_requirements(
             df, file_path, compare_df, compare_file_path
         )
+
+        # Check Nr.11 – requires compare file, cr_number, and report_folder
+        if compare_df is not None and compare_file_path is not None and cr_number and report_folder:
+            findings += ProjectCheckerSDV01.check_cr_number_status(
+                df, compare_df, file_path, compare_file_path, cr_number, report_folder
+            )
 
         return findings
 

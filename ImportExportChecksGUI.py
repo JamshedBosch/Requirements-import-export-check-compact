@@ -62,7 +62,7 @@ class ImportExportGui:
             self.extract_folder, self.excel_folder, _ = CheckConfiguration.initialize_folders()
             logger.debug(f"Folders initialized: extract={self.extract_folder}, excel={self.excel_folder}")
 
-            master.geometry("600x400")  # Reduced height since we removed some widgets
+            master.geometry("600x480")
             master.resizable(False, False)
 
             # Apply custom styles
@@ -178,6 +178,25 @@ class ImportExportGui:
             self.checkbox.grid(row=1, column=1, sticky="w", pady=(15, 5),
                                padx=(10, 0))
 
+            # CR Check row
+            ttk.Label(self.check_type_frame, text="CR Check:",
+                      font=("Helvetica", 12)).grid(row=2, column=0, sticky="w",
+                                                   pady=(15, 5))
+            self.cr_check_var = tk.BooleanVar()
+            self.cr_check_button = ttk.Checkbutton(
+                self.check_type_frame,
+                text="",
+                variable=self.cr_check_var,
+                command=self.toggle_cr_check,
+                style='NoFocus.TCheckbutton',
+                takefocus=False
+            )
+            self.cr_check_button.grid(row=2, column=1, sticky="w", pady=(15, 5),
+                                      padx=(10, 0))
+
+            # Initialize CR number prefix based on default project (PPE/MLBW)
+            self.cr_number_prefix = "BRSPPE-"
+
             # Paths Frame
             self.path_frame = ttk.Frame(master)
             self.path_frame.pack(side=tk.TOP, fill=tk.X, padx=20, pady=10)
@@ -202,6 +221,20 @@ class ImportExportGui:
                 command=self.browse_reference_path,
                 font=("Helvetica", 10),
                 width=10  # Match width with other browse buttons
+            )
+
+            # CR Number entry (initially hidden, shown when CR Check is enabled)
+            vcmd = (master.register(self.validate_cr_number), '%P')
+            self.cr_number_var = tk.StringVar(value=self.cr_number_prefix)
+            self.cr_number_label = ttk.Label(self.path_frame, text="CR Number:",
+                                             font=("Helvetica", 12))
+            self.cr_number_entry = ttk.Entry(
+                self.path_frame,
+                textvariable=self.cr_number_var,
+                width=40,
+                font=("Helvetica", 10),
+                validate='key',
+                validatecommand=vcmd
             )
 
             # Buttons Frame
@@ -248,6 +281,9 @@ class ImportExportGui:
             self.status_bar = ttk.Label(master, text="", relief=tk.SUNKEN,
                                         anchor=tk.W, font=("Helvetica", 10))
             self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+            # Update CR number prefix whenever the project selection changes
+            self.project_var.trace_add('write', self.on_project_changed)
 
         except Exception as e:
             logger.error(f"Error during GUI initialization: {str(e)}", exc_info=True)
@@ -306,7 +342,7 @@ class ImportExportGui:
     def browse_reference_path(self):
         """Open file dialog to select reference Excel file"""
         file_path = filedialog.askopenfilename(
-            filetypes=[("Excel files", "*.xlsx;*.xls")]
+            filetypes=[("Excel/CSV files", "*.xlsx;*.xls;*.csv"), ("Excel files", "*.xlsx;*.xls"), ("CSV files", "*.csv")]
         )
         if file_path:
             self.ref_path_var.set(file_path)
@@ -367,8 +403,16 @@ class ImportExportGui:
             reference_file = self.ref_path_var.get() if self.show_path_var.get() else None
             logger.debug(f"Reference file path: {reference_file}")
 
+            # Resolve CR number: only use it if CR Check is enabled and a number was typed
+            cr_number = None
+            if self.cr_check_var.get():
+                raw = self.cr_number_var.get().strip()
+                if len(raw) > len(self.cr_number_prefix):  # something typed after the prefix
+                    cr_number = raw
+            logger.debug(f"CR number: {cr_number}")
+
             processor = ChecksProcessor(project_type, check_type, self.excel_folder,
-                                     reference_file, report_type)
+                                     reference_file, report_type, cr_number)
             reports = processor.process_folder()
             
             logger.info(f"Processed {len(reports)} files")
@@ -384,14 +428,41 @@ class ImportExportGui:
     def toggle_reference_path(self):
         """Show or hide the reference path entry and browse button based on checkbox state"""
         if self.show_path_var.get():
-            self.ref_path_label.grid(row=3, column=0, sticky="w", pady=10)
-            self.ref_path_entry.grid(row=3, column=1, padx=5, pady=10)
-            self.ref_browse_button.grid(row=3, column=2, padx=5, pady=10)
+            self.ref_path_label.grid(row=1, column=0, sticky="w", pady=10)
+            self.ref_path_entry.grid(row=1, column=1, padx=5, pady=10)
+            self.ref_browse_button.grid(row=1, column=2, padx=5, pady=10)
         else:
             self.ref_path_label.grid_remove()
             self.ref_path_entry.grid_remove()
             self.ref_browse_button.grid_remove()
             self.ref_path_var.set("")
+
+    def toggle_cr_check(self):
+        """Show or hide the CR Number entry based on CR Check checkbox state"""
+        if self.cr_check_var.get():
+            self.cr_number_label.grid(row=2, column=0, sticky="w", padx=5, pady=10)
+            self.cr_number_entry.grid(row=2, column=1, padx=5, pady=10)
+            self.cr_number_entry.icursor(tk.END)
+        else:
+            self.cr_number_label.grid_remove()
+            self.cr_number_entry.grid_remove()
+            self.cr_number_var.set(self.cr_number_prefix)
+
+    def validate_cr_number(self, proposed):
+        """Prevent the user from deleting or overwriting the fixed CR number prefix"""
+        return proposed.startswith(self.cr_number_prefix)
+
+    def on_project_changed(self, *args):
+        """Update the CR number prefix when the project selection changes"""
+        project = self.project_var.get()
+        if project == "SSP":
+            self.cr_number_prefix = "BRSSSP-"
+        elif project == "SDV01":
+            self.cr_number_prefix = "BRSSDV01-"
+        else:
+            self.cr_number_prefix = "BRSPPE-"
+        if hasattr(self, 'cr_number_var'):
+            self.cr_number_var.set(self.cr_number_prefix)
 
     def update_status_bar(self, message):
         self.status_bar.config(text=message)

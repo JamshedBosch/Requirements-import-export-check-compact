@@ -51,21 +51,35 @@ class CheckConfiguration:
 class ChecksProcessor:
     """Main processor for Excel file Checks."""
 
-    def __init__(self, project_type, check_type, excel_folder, compare_file=None, report_type="HTML"):
+    def __init__(self, project_type, check_type, excel_folder, compare_file=None, report_type="HTML", cr_number=None):
         self.project = project_type
         self.check_type = check_type
         self.report_folder = CheckConfiguration.REPORT_FOLDER
         self.report_type = report_type
         self.folder_path = excel_folder
         self.compare_file = compare_file
+        self.cr_number = cr_number  # CR number for Check Nr.13/11 TSV generation
         self.compare_df = None  # Dataframe to hold compare file data
 
         # if compare_file is provided, read it into a DataFrame
         if self.compare_file:
             try:
-                self.compare_df = pd.read_excel(self.compare_file,
-                                                keep_default_na=False,
-                                                na_values=[''])
+                if self.compare_file.lower().endswith('.csv'):
+                    for enc in ('utf-8', 'utf-16', 'latin-1'):
+                        try:
+                            self.compare_df = pd.read_csv(self.compare_file,
+                                                          keep_default_na=False,
+                                                          na_values=[''],
+                                                          sep=None,
+                                                          engine='python',
+                                                          encoding=enc)
+                            break
+                        except UnicodeDecodeError:
+                            continue
+                else:
+                    self.compare_df = pd.read_excel(self.compare_file,
+                                                    keep_default_na=False,
+                                                    na_values=[''])
 
                 print(
                     f"Compare file '{self.compare_file}' loaded successfully.")
@@ -145,7 +159,13 @@ class ChecksProcessor:
                     # Check Nr.9
                     findings += ProjectCheckerPPE.check_new_requirements_without_cr_id(
                         df, self.compare_df, file_path, self.compare_file)
-                   
+
+                    # Check Nr.11 – CR Number TSV (only when a CR number was provided)
+                    if self.cr_number:
+                        findings += ProjectCheckerPPE.check_cr_number_status(
+                            df, self.compare_df, file_path, self.compare_file,
+                            self.cr_number, self.report_folder)
+
                     # Check Nr.7
                     # Execute check check_object_text_with_rb_as_status and create a separate report
                     rb_as_status_findings = ProjectCheckerPPE.check_object_text_with_rb_as_status(
@@ -196,6 +216,12 @@ class ChecksProcessor:
                     # check 12
                     findings += ProjectCheckerSSP.check_missing_object_ids_from_bosch(
                         df, self.compare_df, file_path, self.compare_file)
+
+                    # check 13 – CR Number TSV (only when a CR number was provided)
+                    if self.cr_number:
+                        findings += ProjectCheckerSSP.check_cr_number_status(
+                            df, self.compare_df, file_path, self.compare_file,
+                            self.cr_number, self.report_folder)
             else:
                 # Export check BOSCH ==> AUDI
                 print("[SSP] NO EXPORT CHECKS DEFINED SOFAR")
@@ -203,7 +229,8 @@ class ChecksProcessor:
             # SDV01 uses its own checker class;
             if self.check_type == CheckConfiguration.IMPORT_CHECK:
                 findings = ProjectCheckerSDV01.import_checks(
-                    df, file_path, self.compare_df, self.compare_file
+                    df, file_path, self.compare_df, self.compare_file,
+                    self.cr_number, self.report_folder
                 )
             else:
                 findings = ProjectCheckerSDV01.export_checks(
@@ -211,8 +238,9 @@ class ChecksProcessor:
                 )
 
         # Generate report
+        suffix = f"_CR_{self.cr_number}" if self.cr_number else ''
         return ReportGenerator.generate_report(file_path, self.report_folder, self.report_type,
-                                               findings)
+                                               findings, suffix)
 
     def _delete_folder(self, folder_path):
         """Delete a folder and its contents."""

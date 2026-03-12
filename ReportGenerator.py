@@ -82,6 +82,22 @@ class ReportGenerator:
                        margin: 5px 0;
                        font-size: 14px;
                    }
+                   .issue-info {
+                       border-left: 5px solid #4a90d9;
+                       padding: 15px;
+                       margin-bottom: 20px;
+                       background: #f0f6ff;
+                       border-radius: 8px;
+                   }
+                   .issue-info h2 {
+                       color: #1a5fa8;
+                       margin: 0 0 8px;
+                       font-size: 20px;
+                   }
+                   .issue-info p {
+                       margin: 5px 0;
+                       font-size: 14px;
+                   }
                    .code-block {
                        background: #1e1e1e;
                        color: #ffffff;
@@ -376,17 +392,21 @@ class ReportGenerator:
         formatted_value = "<br>".join(value_lines)
 
         # Build header with Check Number and Object ID
+        is_info = finding.get('Type') == 'info'
+        icon = "ℹ️" if is_info else "⚠️"
+        css_class = "issue-info" if is_info else "issue"
+
         header_parts = []
         if check_number != 'N/A':
-            header_parts.append(f"⚠️ Check {check_number}")
+            header_parts.append(f"{icon} Check {check_number}")
         else:
-            header_parts.append("⚠️")
+            header_parts.append(icon)
         header_parts.append(f"Row: {finding['Row']}")
         if object_id_display != 'N/A':
             header_parts.append(f"Object ID: {object_id_display}")
         header_text = " | ".join(header_parts)
 
-        return f"""        <div class="issue">
+        return f"""        <div class="{css_class}">
                        <h2>{header_text}</h2>
                        <p><strong>Attributes:</strong> {finding['Attribute']}</p>
                        <p><strong>Check:</strong> {finding['Issue']}</p>
@@ -395,10 +415,10 @@ class ReportGenerator:
                    </div>"""
 
     @staticmethod
-    def generate_excel_report(file_path, report_folder, findings):
+    def generate_excel_report(file_path, report_folder, findings, suffix=''):
         logger.debug(f"Generating Excel report with {len(findings)} findings")
         try:
-            report_file = os.path.join(report_folder, f"{os.path.basename(file_path).replace('.xlsx', '')}_report.xlsx")
+            report_file = os.path.join(report_folder, f"{os.path.basename(file_path).replace('.xlsx', '')}{suffix}_report.xlsx")
             df = pd.DataFrame(findings)
             df = df.rename(columns={'Value': 'Details'})
             
@@ -424,23 +444,27 @@ class ReportGenerator:
             raise
 
     @staticmethod
-    def _generate_html_report(file_path, report_folder, findings):
+    def _generate_html_report(file_path, report_folder, findings, suffix=''):
         """Generate HTML report for findings."""
         logger.debug(f"Generating HTML report for {file_path}")
         try:
             # Create report filename
             base_name = os.path.basename(file_path).replace('.xlsx', '')
-            report_file = os.path.join(report_folder, f"{base_name}_report.html")
+            report_file = os.path.join(report_folder, f"{base_name}{suffix}_report.html")
 
-            # Calculate per-check counts
+            # Calculate per-check counts (exclude informational findings)
             check_counts = {}
+            real_findings_count = 0
             for finding in findings:
+                if finding.get('Type') == 'info':
+                    continue
                 check_num = finding.get('Check Number', 'N/A')
                 check_counts[check_num] = check_counts.get(check_num, 0) + 1
+                real_findings_count += 1
 
             # Generate summary section
             summary_content = ReportGenerator._generate_summary_section(
-                total_findings=len(findings),
+                total_findings=real_findings_count,
                 check_counts=check_counts
             )
 
@@ -718,18 +742,18 @@ class ReportGenerator:
             return None
 
     @staticmethod
-    def generate_report(file_path, report_folder, report_type, findings):
+    def generate_report(file_path, report_folder, report_type, findings, suffix=''):
         logger.info(f"Generating {report_type} report for {file_path}")
-        
+
         try:
             report_type = report_type.lower()
             report_files = []
-            
+
             # Generate the main report (HTML or Excel)
             if report_type == 'excel':
-                report_file = ReportGenerator.generate_excel_report(file_path, report_folder, findings)
+                report_file = ReportGenerator.generate_excel_report(file_path, report_folder, findings, suffix)
             else:
-                report_file = ReportGenerator._generate_html_report(file_path, report_folder, findings)
+                report_file = ReportGenerator._generate_html_report(file_path, report_folder, findings, suffix)
             report_files.append(report_file)
             
             # Generate translation TSV only for Check Nr. 10 findings
