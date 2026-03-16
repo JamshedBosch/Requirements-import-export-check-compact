@@ -1070,7 +1070,7 @@ class ProjectCheckerSDV01:
                       file_path: str,
                       compare_df: pd.DataFrame | None = None,
                       compare_file_path: str | None = None,
-                      cr_number: str | None = None,
+                      cr_numbers: list[str] | None = None,
                       report_folder: str | None = None) -> list[dict]:
         """
         Entry point for SDV01 import checks.
@@ -1123,11 +1123,12 @@ class ProjectCheckerSDV01:
             df, file_path, compare_df, compare_file_path
         )
 
-        # Check Nr.11 – requires compare file, cr_number, and report_folder
-        if compare_df is not None and compare_file_path is not None and cr_number and report_folder:
-            findings += ProjectCheckerSDV01.check_cr_number_status(
-                df, compare_df, file_path, compare_file_path, cr_number, report_folder
-            )
+        # Check Nr.11 – requires compare file, cr_numbers, and report_folder
+        if compare_df is not None and compare_file_path is not None and cr_numbers and report_folder:
+            for cr in cr_numbers:
+                findings += ProjectCheckerSDV01.check_cr_number_status(
+                    df, compare_df, file_path, compare_file_path, cr, report_folder
+                )
 
         return findings
 

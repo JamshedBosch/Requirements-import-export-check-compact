@@ -803,6 +803,7 @@ class ProjectCheckerSSP:
             findings.append({
                 'Row': index + 2,  # Excel-style row number
                 'Check Number': 'Nr.11',
+                'Category': 'rb_update',
                 'Object ID': object_id_str,
                 'Attribute': changed_attrs_str,
                 'Issue': (

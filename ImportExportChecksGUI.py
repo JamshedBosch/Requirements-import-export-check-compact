@@ -224,7 +224,6 @@ class ImportExportGui:
             )
 
             # CR Number entry (initially hidden, shown when CR Check is enabled)
-            vcmd = (master.register(self.validate_cr_number), '%P')
             self.cr_number_var = tk.StringVar(value=self.cr_number_prefix)
             self.cr_number_label = ttk.Label(self.path_frame, text="CR Number:",
                                              font=("Helvetica", 12))
@@ -232,9 +231,15 @@ class ImportExportGui:
                 self.path_frame,
                 textvariable=self.cr_number_var,
                 width=40,
-                font=("Helvetica", 10),
-                validate='key',
-                validatecommand=vcmd
+                font=("Helvetica", 10)
+            )
+            self.cr_number_help_label = ttk.Label(
+                self.path_frame,
+                text="Enter one or more CR numbers separated by commas or semicolons. "
+                     "Example: BRSSSP-312, 324, 325  or  BRSSSP-312; BRSSSP-324",
+                font=("Helvetica", 8),
+                foreground="#888888",
+                wraplength=280
             )
 
             # Buttons Frame
@@ -321,7 +326,7 @@ class ImportExportGui:
         entry_var = tk.StringVar()
         entry = tk.Entry(parent, textvariable=entry_var, width=40,
                          font=("Helvetica", 10))
-        entry.grid(row=row, column=1, padx=5, pady=10)
+        entry.grid(row=row, column=1, sticky="w", padx=5, pady=10)
 
         browse_button = tk.Button(parent, text="Browse",
                                   command=browse_command,
@@ -403,16 +408,22 @@ class ImportExportGui:
             reference_file = self.ref_path_var.get() if self.show_path_var.get() else None
             logger.debug(f"Reference file path: {reference_file}")
 
-            # Resolve CR number: only use it if CR Check is enabled and a number was typed
-            cr_number = None
+            # Resolve CR numbers: only use them if CR Check is enabled and numbers were typed
+            cr_numbers = None
             if self.cr_check_var.get():
                 raw = self.cr_number_var.get().strip()
-                if len(raw) > len(self.cr_number_prefix):  # something typed after the prefix
-                    cr_number = raw
-            logger.debug(f"CR number: {cr_number}")
+                cr_numbers = self.parse_cr_numbers(raw)
+                if cr_numbers is None:
+                    messagebox.showwarning(
+                        "CR Number Missing",
+                        f"CR Check is enabled but no valid CR number was entered.\n"
+                        f"Please enter at least one CR number after the prefix '{self.cr_number_prefix}'."
+                    )
+                    return
+            logger.debug(f"CR numbers: {cr_numbers}")
 
             processor = ChecksProcessor(project_type, check_type, self.excel_folder,
-                                     reference_file, report_type, cr_number)
+                                     reference_file, report_type, cr_numbers)
             reports = processor.process_folder()
             
             logger.info(f"Processed {len(reports)} files")
@@ -429,7 +440,7 @@ class ImportExportGui:
         """Show or hide the reference path entry and browse button based on checkbox state"""
         if self.show_path_var.get():
             self.ref_path_label.grid(row=1, column=0, sticky="w", pady=10)
-            self.ref_path_entry.grid(row=1, column=1, padx=5, pady=10)
+            self.ref_path_entry.grid(row=1, column=1, sticky="w", padx=5, pady=10)
             self.ref_browse_button.grid(row=1, column=2, padx=5, pady=10)
         else:
             self.ref_path_label.grid_remove()
@@ -440,17 +451,55 @@ class ImportExportGui:
     def toggle_cr_check(self):
         """Show or hide the CR Number entry based on CR Check checkbox state"""
         if self.cr_check_var.get():
-            self.cr_number_label.grid(row=2, column=0, sticky="w", padx=5, pady=10)
-            self.cr_number_entry.grid(row=2, column=1, padx=5, pady=10)
+            self.cr_number_label.grid(row=2, column=0, sticky="w", padx=5, pady=(10, 0))
+            self.cr_number_entry.grid(row=2, column=1, sticky="w", padx=5, pady=(10, 0))
+            self.cr_number_help_label.grid(row=3, column=1, sticky="w", padx=5, pady=(0, 5))
             self.cr_number_entry.icursor(tk.END)
         else:
             self.cr_number_label.grid_remove()
             self.cr_number_entry.grid_remove()
+            self.cr_number_help_label.grid_remove()
             self.cr_number_var.set(self.cr_number_prefix)
 
-    def validate_cr_number(self, proposed):
-        """Prevent the user from deleting or overwriting the fixed CR number prefix"""
-        return proposed.startswith(self.cr_number_prefix)
+    def parse_cr_numbers(self, raw: str) -> list | None:
+        """Parse a raw CR number string that may contain multiple CR numbers
+        separated by commas or semicolons.
+
+        Supports abbreviated forms: if a token lacks the project prefix,
+        the prefix is prepended automatically.
+
+        Returns a list of fully-qualified CR number strings, or None if
+        the input is empty or contains only the bare prefix.
+
+        Examples (prefix = "BRSSSP-"):
+            "BRSSSP-312, 324, 325"        -> ["BRSSSP-312", "BRSSSP-324", "BRSSSP-325"]
+            "BRSSSP-312; BRSSSP-324"      -> ["BRSSSP-312", "BRSSSP-324"]
+            "BRSSSP-312, BRSSSP-324, 325" -> ["BRSSSP-312", "BRSSSP-324", "BRSSSP-325"]
+        """
+        import re
+        raw = raw.strip()
+        if not raw or raw == self.cr_number_prefix:
+            return None
+
+        tokens = [t.strip() for t in re.split(r'[,;]', raw) if t.strip()]
+        if not tokens:
+            return None
+
+        # Detect prefix from first token that contains a dash (e.g. "BRSSSP-312")
+        detected_prefix = self.cr_number_prefix
+        for token in tokens:
+            if '-' in token:
+                detected_prefix = token[:token.rfind('-') + 1]
+                break
+
+        result = []
+        for token in tokens:
+            if '-' in token:
+                result.append(token)
+            else:
+                result.append(f"{detected_prefix}{token}")
+
+        return result if result else None
 
     def on_project_changed(self, *args):
         """Update the CR number prefix when the project selection changes"""

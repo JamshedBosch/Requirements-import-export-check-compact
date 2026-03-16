@@ -109,6 +109,48 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
   - 'BRS-1Box_Status_Zulieferer_Bosch_PPx' must be 'n/a'
 - **Finding Trigger**: Invalid status for headers or information
 
+#### 11. CR Number Status (TSV Generation)
+**Method**: `check_cr_number_status`
+- **Purpose**: Looks up a specific CR number in the compare file, retrieves its customer status, then finds all matching requirements in the customer file and writes a TSV file ready for import into the requirements tool.
+- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and a CR number is entered (e.g. `BRSPPE-312`).
+- **Required Columns**:
+
+  | File | Required Columns |
+  |---|---|
+  | Compare file | `Customer Id`, `Customer Status` |
+  | Customer file | `externe CR-ID`, `ReqIF.ForeignID` |
+
+- **Logic**:
+  1. Look up the CR number in the compare file column `Customer Id`
+  2. Read the `Customer Status` value from the matched row
+  3. Find all rows in the customer file where `externe CR-ID` equals the CR number
+  4. Write a TSV file with columns `ForeignID` and `CR-Status_Bosch_PPx`
+
+- **Output File**: `<base_filename>_CR_<cr_number>.tsv` — placed in the same report folder as the HTML report.
+
+- **Finding Trigger (error cases)**:
+  - CR number not found in compare file → error finding in HTML report
+  - CR number not found in customer file → error finding in HTML report
+
+- **Informational Finding (success case)**:
+  - When the TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
+
+- **Report Format (info)**:
+  ```
+  CR Number: <cr_number>
+  Customer Status: <status_from_compare_file>
+  TSV File: <tsv_filename>
+  ```
+
+- **TSV Format**:
+  ```
+  ForeignID	CR-Status_Bosch_PPx
+  <ReqIF.ForeignID value>	<Customer Status>
+  ...
+  ```
+
+---
+
 #### 10. Status Bosch PPx 015 with BRS Status Not Abgestimmt
 **Method**: `check_status_bosch_ppx_015_and_brs_status_not_abgestimmt`
 - **Purpose**: Ensures that when 'Status_Bosch_PPx' is '015', the 'BRS-1Box_Status_Hersteller_Bosch_PPx' is set to 'abgestimmt'.
@@ -366,6 +408,46 @@ Object ID: [missing_object_id]
 - `Bosch Object Text` provides context about the deleted requirement (shown as `N/A` if the Bosch file has no `Object Text` column)
 - `Row` is reported as `N/A` since the Object ID is absent from the customer file and has no corresponding row
 
+#### 13. CR Number Status (TSV Generation)
+**Method**: `check_cr_number_status`
+- **Purpose**: Looks up a specific CR number in the compare file, retrieves its customer status, then finds all matching requirements in the customer file and writes a TSV file ready for import into the requirements tool.
+- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and a CR number is entered (e.g. `BRSSSP-312`).
+- **Required Columns**:
+
+  | File | Required Columns |
+  |---|---|
+  | Compare file | `Customer Id`, `Customer Status` |
+  | Customer file | `externe CR-ID`, `ReqIF.ForeignID` |
+
+- **Logic**:
+  1. Look up the CR number in the compare file column `Customer Id`
+  2. Read the `Customer Status` value from the matched row
+  3. Find all rows in the customer file where `externe CR-ID` equals the CR number
+  4. Write a TSV file with columns `ForeignID` and `CR-Status_Bosch_SSP`
+
+- **Output File**: `<base_filename>_CR_<cr_number>.tsv` — placed in the same report folder as the HTML report.
+
+- **Finding Trigger (error cases)**:
+  - CR number not found in compare file → error finding in HTML report
+  - CR number not found in customer file → error finding in HTML report
+
+- **Informational Finding (success case)**:
+  - When the TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
+
+- **Report Format (info)**:
+  ```
+  CR Number: <cr_number>
+  Customer Status: <status_from_compare_file>
+  TSV File: <tsv_filename>
+  ```
+
+- **TSV Format**:
+  ```
+  ForeignID	CR-Status_Bosch_SSP
+  <ReqIF.ForeignID value>	<Customer Status>
+  ...
+  ```
+
 ---
 
 ## ChecksSDV01.py
@@ -580,6 +662,48 @@ The `ProjectCheckerSDV01` class implements checks for SDV01 requirements.
   Note: Bosch CR-Status '100' or '31' must not be overwritten.
   ```
   - Clearly indicates that protected status values should not be overwritten
+
+#### 11. CR Number Status (TSV Generation)
+**Method**: `check_cr_number_status`
+- **Purpose**: Looks up a specific CR number in the compare file, retrieves its customer status, then finds all matching requirements in the customer file and writes a TSV file ready for import into the requirements tool.
+- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and a CR number is entered (e.g. `BRSSDV01-312`).
+- **Required Columns**:
+
+  | File | Required Columns |
+  |---|---|
+  | Compare file | `Customer Id`, `Customer Status` |
+  | Customer file | `externe CR-ID`, `ReqIF.ForeignID` |
+
+- **Logic**:
+  1. Look up the CR number in the compare file column `Customer Id`
+  2. Read the `Customer Status` value from the matched row
+  3. Find all rows in the customer file where `externe CR-ID` equals the CR number
+  4. Write a TSV file with columns `ForeignID` and `CR-Status_Bosch_SDV0.1`
+
+- **Output File**: `<base_filename>_CR_<cr_number>.tsv` — placed in the same report folder as the HTML report.
+
+- **Finding Trigger (error cases)**:
+  - CR number not found in compare file → error finding in HTML report
+  - CR number not found in customer file → error finding in HTML report
+
+- **Informational Finding (success case)**:
+  - When the TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
+
+- **Report Format (info)**:
+  ```
+  CR Number: <cr_number>
+  Customer Status: <status_from_compare_file>
+  TSV File: <tsv_filename>
+  ```
+
+- **TSV Format**:
+  ```
+  ForeignID	CR-Status_Bosch_SDV0.1
+  <ReqIF.ForeignID value>	<Customer Status>
+  ...
+  ```
+
+---
 
 ### Export Checks
 - No export checks implemented yet (placeholder exists)

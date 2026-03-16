@@ -768,10 +768,10 @@ class ReportGenerator:
                 if translation_tsv:
                     report_files.append(translation_tsv)
 
-            # Generate RB update TSV only for Check Nr. 11 findings
+            # Generate RB update TSV only for explicit rb_update findings
             rb_update_findings = [
                 finding for finding in findings
-                if finding.get('Check Number') == 'Nr.11'
+                if finding.get('Category') == 'rb_update'
             ]
 
             if rb_update_findings:
