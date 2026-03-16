@@ -62,7 +62,7 @@ class ImportExportGui:
             self.extract_folder, self.excel_folder, _ = CheckConfiguration.initialize_folders()
             logger.debug(f"Folders initialized: extract={self.extract_folder}, excel={self.excel_folder}")
 
-            master.geometry("600x480")
+            master.geometry("600x550")
             master.resizable(False, False)
 
             # Apply custom styles

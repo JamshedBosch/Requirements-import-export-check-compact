@@ -56,6 +56,7 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
   - Object Text differs between files
   - 'RB_AS_Status' is in ['accepted', 'no_req', 'canceled_closed']
 - **Finding Trigger**: Text differences with prohibited status values
+- **Note**: Findings are included in the main HTML report (not a separate file).
 
 #### 8. Required Attributes Not Empty
 **Method**: `check_required_attributes_not_empty`
@@ -111,8 +112,11 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
 
 #### 11. CR Number Status (TSV Generation)
 **Method**: `check_cr_number_status`
-- **Purpose**: Looks up a specific CR number in the compare file, retrieves its customer status, then finds all matching requirements in the customer file and writes a TSV file ready for import into the requirements tool.
-- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and a CR number is entered (e.g. `BRSPPE-312`).
+- **Purpose**: Looks up one or more CR numbers in the compare file, retrieves the customer status for each, then finds all matching requirements in the customer file and writes one TSV file per valid CR ready for import into the requirements tool.
+- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and at least one CR number is entered.
+- **Multiple CR Input**: Users can enter multiple CR numbers in the **CR Number** field, separated by commas or semicolons. Abbreviated input is supported — only the numeric suffix needs to be repeated after the first full number:
+  - `BRSPPE-312, 324, 325` → processes `BRSPPE-312`, `BRSPPE-324`, `BRSPPE-325`
+  - `BRSPPE-312; BRSPPE-324` → processes both full numbers
 - **Required Columns**:
 
   | File | Required Columns |
@@ -120,20 +124,20 @@ The `ProjectCheckerPPE` class implements various checks for PPE (Product Perform
   | Compare file | `Customer Id`, `Customer Status` |
   | Customer file | `externe CR-ID`, `ReqIF.ForeignID` |
 
-- **Logic**:
+- **Logic** (repeated for each entered CR number):
   1. Look up the CR number in the compare file column `Customer Id`
   2. Read the `Customer Status` value from the matched row
   3. Find all rows in the customer file where `externe CR-ID` equals the CR number
   4. Write a TSV file with columns `ForeignID` and `CR-Status_Bosch_PPx`
 
-- **Output File**: `<base_filename>_CR_<cr_number>.tsv` — placed in the same report folder as the HTML report.
+- **Output Files**: One `<base_filename>_CR_<cr_number>.tsv` per valid CR — placed in the same report folder as the HTML report. No TSV is generated for a CR number that is not found.
 
-- **Finding Trigger (error cases)**:
-  - CR number not found in compare file → error finding in HTML report
-  - CR number not found in customer file → error finding in HTML report
+- **Finding Trigger (error cases — no TSV generated)**:
+  - CR number not found in compare file → error finding in HTML report, no TSV
+  - CR number not found in customer file → error finding in HTML report, no TSV
 
 - **Informational Finding (success case)**:
-  - When the TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
+  - When a TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
 
 - **Report Format (info)**:
   ```
@@ -340,7 +344,7 @@ The `ProjectCheckerSSP` class implements checks for SSP (Scalable System Platfor
   ---------------
          RB_Update_detected: Yes
   ```
-- **Additional Output**: A `_rb_update.tsv` file is generated alongside the HTML report, containing one row per affected `Object ID` with column `RB_Update_detected = Yes`.
+- **Additional Output**: A `_rb_update.tsv` file is generated alongside the HTML report, containing one row per affected `Object ID` with column `RB_Update_detected = Yes`. These findings are internally tagged with `Category: rb_update` so that the TSV generation is scoped exclusively to this check and is not triggered by CR number check findings (which share the same check number in other projects).
 
 ---
 
@@ -410,8 +414,11 @@ Object ID: [missing_object_id]
 
 #### 13. CR Number Status (TSV Generation)
 **Method**: `check_cr_number_status`
-- **Purpose**: Looks up a specific CR number in the compare file, retrieves its customer status, then finds all matching requirements in the customer file and writes a TSV file ready for import into the requirements tool.
-- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and a CR number is entered (e.g. `BRSSSP-312`).
+- **Purpose**: Looks up one or more CR numbers in the compare file, retrieves the customer status for each, then finds all matching requirements in the customer file and writes one TSV file per valid CR ready for import into the requirements tool.
+- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and at least one CR number is entered.
+- **Multiple CR Input**: Users can enter multiple CR numbers in the **CR Number** field, separated by commas or semicolons. Abbreviated input is supported — only the numeric suffix needs to be repeated after the first full number:
+  - `BRSSSP-312, 324, 325` → processes `BRSSSP-312`, `BRSSSP-324`, `BRSSSP-325`
+  - `BRSSSP-312; BRSSSP-324` → processes both full numbers
 - **Required Columns**:
 
   | File | Required Columns |
@@ -419,20 +426,20 @@ Object ID: [missing_object_id]
   | Compare file | `Customer Id`, `Customer Status` |
   | Customer file | `externe CR-ID`, `ReqIF.ForeignID` |
 
-- **Logic**:
+- **Logic** (repeated for each entered CR number):
   1. Look up the CR number in the compare file column `Customer Id`
   2. Read the `Customer Status` value from the matched row
   3. Find all rows in the customer file where `externe CR-ID` equals the CR number
   4. Write a TSV file with columns `ForeignID` and `CR-Status_Bosch_SSP`
 
-- **Output File**: `<base_filename>_CR_<cr_number>.tsv` — placed in the same report folder as the HTML report.
+- **Output Files**: One `<base_filename>_CR_<cr_number>.tsv` per valid CR — placed in the same report folder as the HTML report. No TSV is generated for a CR number that is not found.
 
-- **Finding Trigger (error cases)**:
-  - CR number not found in compare file → error finding in HTML report
-  - CR number not found in customer file → error finding in HTML report
+- **Finding Trigger (error cases — no TSV generated)**:
+  - CR number not found in compare file → error finding in HTML report, no TSV
+  - CR number not found in customer file → error finding in HTML report, no TSV
 
 - **Informational Finding (success case)**:
-  - When the TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
+  - When a TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
 
 - **Report Format (info)**:
   ```
@@ -665,8 +672,11 @@ The `ProjectCheckerSDV01` class implements checks for SDV01 requirements.
 
 #### 11. CR Number Status (TSV Generation)
 **Method**: `check_cr_number_status`
-- **Purpose**: Looks up a specific CR number in the compare file, retrieves its customer status, then finds all matching requirements in the customer file and writes a TSV file ready for import into the requirements tool.
-- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and a CR number is entered (e.g. `BRSSDV01-312`).
+- **Purpose**: Looks up one or more CR numbers in the compare file, retrieves the customer status for each, then finds all matching requirements in the customer file and writes one TSV file per valid CR ready for import into the requirements tool.
+- **Activation**: Only executed when the **CR Check** checkbox is enabled in the GUI and at least one CR number is entered.
+- **Multiple CR Input**: Users can enter multiple CR numbers in the **CR Number** field, separated by commas or semicolons. Abbreviated input is supported — only the numeric suffix needs to be repeated after the first full number:
+  - `BRSSDV01-312, 324, 325` → processes `BRSSDV01-312`, `BRSSDV01-324`, `BRSSDV01-325`
+  - `BRSSDV01-312; BRSSDV01-324` → processes both full numbers
 - **Required Columns**:
 
   | File | Required Columns |
@@ -674,20 +684,20 @@ The `ProjectCheckerSDV01` class implements checks for SDV01 requirements.
   | Compare file | `Customer Id`, `Customer Status` |
   | Customer file | `externe CR-ID`, `ReqIF.ForeignID` |
 
-- **Logic**:
+- **Logic** (repeated for each entered CR number):
   1. Look up the CR number in the compare file column `Customer Id`
   2. Read the `Customer Status` value from the matched row
   3. Find all rows in the customer file where `externe CR-ID` equals the CR number
   4. Write a TSV file with columns `ForeignID` and `CR-Status_Bosch_SDV0.1`
 
-- **Output File**: `<base_filename>_CR_<cr_number>.tsv` — placed in the same report folder as the HTML report.
+- **Output Files**: One `<base_filename>_CR_<cr_number>.tsv` per valid CR — placed in the same report folder as the HTML report. No TSV is generated for a CR number that is not found.
 
-- **Finding Trigger (error cases)**:
-  - CR number not found in compare file → error finding in HTML report
-  - CR number not found in customer file → error finding in HTML report
+- **Finding Trigger (error cases — no TSV generated)**:
+  - CR number not found in compare file → error finding in HTML report, no TSV
+  - CR number not found in customer file → error finding in HTML report, no TSV
 
 - **Informational Finding (success case)**:
-  - When the TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
+  - When a TSV is successfully generated, an **informational entry** (blue, ℹ️) is added to the HTML report confirming the CR number found, the customer status, and the TSV filename. This entry does **not** count towards the total findings.
 
 - **Report Format (info)**:
   ```
