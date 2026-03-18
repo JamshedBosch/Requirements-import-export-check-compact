@@ -225,7 +225,7 @@ class ImportExportGui:
 
             # CR Number entry (initially hidden, shown when CR Check is enabled)
             self.cr_number_var = tk.StringVar(value=self.cr_number_prefix)
-            self.cr_number_label = ttk.Label(self.path_frame, text="CR Number:",
+            self.cr_number_label = ttk.Label(self.path_frame, text="CR-ID:",
                                              font=("Helvetica", 12))
             self.cr_number_entry = ttk.Entry(
                 self.path_frame,
@@ -507,7 +507,7 @@ class ImportExportGui:
         if project == "SSP":
             self.cr_number_prefix = "BRSSSP-"
         elif project == "SDV01":
-            self.cr_number_prefix = "BRSSDV01-"
+            self.cr_number_prefix = "BRSSSP-"
         else:
             self.cr_number_prefix = "BRSPPE-"
         if hasattr(self, 'cr_number_var'):
