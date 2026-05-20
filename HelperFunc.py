@@ -25,6 +25,16 @@ class HelperFunctions:
         for q in quotes:
             text = text.replace(q, '')
 
+        # Remove Bosch DOORS OLE object placeholder 'o'. Bosch exports embedded
+        # objects as a literal 'o' character, appearing in two forms:
+        #   1. 'o?' \u2014 OLE placeholder immediately before the \u25CA artifact '?'
+        #   2. 'o<Uppercase>' \u2014 OLE placeholder glued directly to the next word
+        # Both patterns require that 'o' is NOT preceded by a lowercase letter,
+        # which protects legitimate 'o' inside words (e.g. 'motor', 'control').
+        # Must be applied before whitespace removal while context is still readable.
+        text = re.sub(r'(?<![a-z\u00E4\u00F6\u00FC\u00DF])o\?', '', text)
+        text = re.sub(r'(?<![a-z\u00E4\u00F6\u00FC\u00DF])o(?=[A-Z])', '', text)
+
         # Remove all whitespace (spaces, tabs, newlines, non-breaking spaces, etc.)
         text = re.sub(r'\s+', '', text, flags=re.UNICODE)
         text = text.replace('\u00A0', '')  # Non-breaking space
@@ -43,10 +53,12 @@ class HelperFunctions:
         # Remove semicolons
         text = text.replace(';', '')
 
-        # Remove question marks — they appear as encoding artifacts in Bosch DOORS
-        # exports when a special character (e.g. →, non-breaking space) cannot be
-        # encoded, so a lone '?' between words should not trigger a finding.
+        # Remove question marks and lozenge (◊) — both are encoding artifacts for
+        # special characters that the export tool could not represent: '?' in Bosch
+        # DOORS exports, '◊' in customer ReqIF exports. Both mean the same source
+        # character and must not trigger a finding.
         text = text.replace('?', '')
+        text = text.replace('◊', '')
 
         # Remove other formatting characters if needed (dashes, etc.)
         # text = text.replace('-', '')  # Uncomment if you want to ignore dashes too

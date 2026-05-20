@@ -332,6 +332,8 @@ class ReportGenerator:
             elif "Bosch File Object Text:" in line:
                 bosch_text = line.replace("Bosch File Object Text:", "").strip()
             # Fallback for checks that use ReqIF.Text / Object Text wording (e.g. SSP Check Nr.11)
+            elif "Customer File ReqIF.Text:" in line and not customer_text:
+                customer_text = line.replace("Customer File ReqIF.Text:", "").strip()
             elif "Customer ReqIF.Text:" in line and not customer_text:
                 customer_text = line.replace("Customer ReqIF.Text:", "").strip()
             elif "Bosch Object Text:" in line and not bosch_text:
@@ -370,6 +372,8 @@ class ReportGenerator:
             elif "Bosch File Object Text:" in line:
                 value_lines[i] = f"       Bosch File Object Text: {highlighted_bosch}"
             # Also support highlighting for ReqIF.Text / Object Text lines (e.g. SSP Check Nr.11)
+            elif "Customer File ReqIF.Text:" in line and customer_text:
+                value_lines[i] = f"       Customer File ReqIF.Text: {highlighted_customer}"
             elif "Customer ReqIF.Text:" in line and customer_text:
                 value_lines[i] = f"       Customer ReqIF.Text: {highlighted_customer}"
             elif "Bosch Object Text:" in line and bosch_text:
